@@ -3,59 +3,27 @@
 
   <#
   .SYNOPSIS
-  verb-ADMS - ActiveDirectory PS Module-related generic functions
+  verb-ADMS - Development-related generic functions
   .NOTES
-  Version     : 1.0.0.0
+  Version     : 1.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
-  CreatedDate : 12/26/2019
+  CreatedDate : 12/18/2019
   FileName    : verb-ADMS.psm1
   License     : MIT
-  Copyright   : (c) 12/26/2019 Todd Kadrie
+  Copyright   : (c) 12/18/2019 Todd Kadrie
   Github      : https://github.com/tostka
   AddedCredit : REFERENCE
   AddedWebsite:	REFERENCEURL
   AddedTwitter:	@HANDLE / http://twitter.com/HANDLE
   REVISIONS
-  * 12/26/2019 - 1.0.0.0
+  * 12/18/2019 - 1.0.0
   # 11:51 AM 5/6/2019 Sync-AD():moved from tsksid-incl-ServerApp.ps1
-  # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
-  # 11:33 AM 11/1/2017 initial vers
+# 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
+# 11:33 AM 11/1/2017 initial vers
   .DESCRIPTION
-  verb-ADMS - ActiveDirectory PS Module-related generic functions
-  .PARAMETER  PARAMNAME
-  PARAMDESC
-  .PARAMETER  Mbx
-  Mailbox identifier [samaccountname,name,emailaddr,alias]
-  .PARAMETER  Computer
-  Computer Name [-ComputerName server]
-  .PARAMETER  ServerFqdn
-  Server Fqdn (24-25char) [-serverFqdn lynms650.global.ad.toro.com)] 
-  .PARAMETER  Server
-  Server NBname (8-9chars) [-server lynms650)]
-  .PARAMETER  SiteName
-  Specify Site to analyze [-SiteName (USEA|GBMK|AUSYD]
-  .PARAMETER  Ticket
-  Ticket # [-Ticket nnnnn]
-  .PARAMETER  Path
-  Path [-path c:\path-to\]
-  .PARAMETER  File
-  File [-file c:\path-to\file.ext]
-  .PARAMETER  String
-  2-30 char string [-string 'word']
-  .PARAMETER  Credential
-  Credential (PSCredential obj) [-credential ]
-  .PARAMETER  Logonly
-  Run a Test no-change pass, and log results [-Logonly]
-  .PARAMETER  FORCEALLPINS
-  Reset All PINs (boolean) [-FORCEALLPINS:True]
-  .PARAMETER Whatif
-  Parameter to run a Test no-change pass, and log results [-Whatif switch]
-  .PARAMETER ShowProgress
-  Parameter to display progress meter [-ShowProgress switch]
-  .PARAMETER ShowDebug
-  Parameter to display Debugging messages [-ShowDebug switch]
+  verb-ADMS - Development-related generic functions
   .INPUTS
   None
   .OUTPUTS
@@ -65,7 +33,6 @@
   .LINK
   https://github.com/tostka/verb-ADMS
   #>
-
 
 
 function load-ADMS {
@@ -137,7 +104,6 @@ function load-ADMS {
 } #*----------^END Function load-ADMS ^----------
 # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
 if(!(get-alias | ?{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; }
-
 Function Sync-AD { 
     # let's you trigger a replication between DCs. This function needs further tweaks for re-usability
     # from dsoldow's https://github.com/dsolodow/IndyPoSH/blob/master/Profile.ps1
@@ -154,8 +120,8 @@ Function Sync-AD {
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU0ZMj8WWpx1T1cMY9ONF1Sx/C
-# l6CgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU2175GUnq1f65VqhBpi+G18c2
+# MX+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -170,9 +136,9 @@ Function Sync-AD {
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSytobE
-# Yl0SNAnEKh8LxCebM22XqzANBgkqhkiG9w0BAQEFAASBgFXh1yToJCqRZLOB/+ol
-# 4r3H+6hxgR7j1Grohl2nxFRKsEJpw9OpyrbuD5o/wEReWdV+guoJueXabtSgY1px
-# 7m8fi1tcYx/LFNjiGnSsOv2H61zNiPmgtzvCBAQIF0qrJIczeMW58RcDSJ88CW2F
-# uvP7+5EhXtJaiCBMXtO82Kqv
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS4yHIj
+# 322qQuWlb6m5B/HYEsMZYDANBgkqhkiG9w0BAQEFAASBgLAGfTweY1gER0MqIs4c
+# oUL9A9mz7ovbwGmSORCwzWBed4UnEJ4IrUqYT5gt6ZmeJPS+p/Qro3DTQkJ5rsws
+# Z1FT7cgcxGcDAP2gsrs9i4knaNuWCNvU/9wqsGuUZ5Q+cD1Fl1lENrGGdhzVrkg6
+# VSXoBH90N7L2oDBlJk3l8hHa
 # SIG # End signature block
