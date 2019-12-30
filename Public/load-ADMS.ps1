@@ -33,7 +33,7 @@ function load-ADMS {
     if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
     write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):(loading ADMS...)" ;
     load-ADMS | out-null ;
-    #load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ; 
+    #load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ;
     Demo a load from the verb-ADMS.ps1 module, with opt specific -Cmdlet set
     #>
     PARAM(
@@ -44,52 +44,27 @@ function load-ADMS {
     # check registred v loaded ;
     #$ModsReg=Get-Module -ListAvailable;
     # focus both of the above to SPEED them UP!
-    $tMod = "ActiveDirectory" ; 
-    $ModsReg=Get-Module -Name $tMod -ListAvailable ; 
+    $tMod = "ActiveDirectory" ;
+    $ModsReg=Get-Module -Name $tMod -ListAvailable ;
     #$ModsLoad=Get-Module;
-    $ModsLoad=Get-Module -name $tMod ; 
-    $pltAD=@{Name=$tMod ; ErrorAction="Stop" } ; 
+    $ModsLoad=Get-Module -name $tMod ;
+    $pltAD=@{Name=$tMod ; ErrorAction="Stop" } ;
     if($Cmdlet){$pltAD.add('Cmdlet',$Cmdlet) } ;
     #if ($ModsReg | where {$_.Name -eq $tMod}) {
     if ($ModsReg) {
         #if (!($ModsLoad | where {$_.Name -eq $tMod})) {
         if (!($ModsLoad)) {
-            $env:ADPS_LoadDefaultDrive = 0 ; 
+            $env:ADPS_LoadDefaultDrive = 0 ;
             #import-module -Name $tMod -Cmdlet:$($Cmdlet) -ErrorAction Stop ;return $TRUE;
-            import-module @pltAD; 
+            import-module @pltAD;
             return $TRUE;
         } else {
             return $TRUE;
-        } # if-E ; 
+        } # if-E ;
     } else {
         Write-Error {"$((get-date).ToString('HH:mm:ss')):($env:computername) does not have AD Mgmt Tools installed!";};
         return $FALSE
-    } # if-E ; 
+    } # if-E ;
 } #*----------^END Function load-ADMS ^----------
 # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
-if(!(get-alias | ?{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; } ;
-# SIG # Begin signature block
-# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
-# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUBlTNwAUA4LCeUmj8AWIstMvz
-# a9ygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
-# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
-# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
-# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
-# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
-# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
-# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
-# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
-# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
-# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
-# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
-# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
-# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
-# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
-# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTTPrxu
-# XyKksl24/OYJ48XocVrpujANBgkqhkiG9w0BAQEFAASBgBdlI3/QYgLGZL+SlMfk
-# Jzule9b0vm+Wh1u2WMH1BcqQW0CU98Qp/K7pCahq6HQsx+I9XXqq5voSuhP8QYNg
-# PKoZrIiyNL9uivtA0Dmg2hDD4RYixzTVgDC6NPO4sxTwqjwchKfnPUhagrPtvKXM
-# 0ggusS6p0/8dW/hoAt5Gbdal
-# SIG # End signature block
+if(!(get-alias | Where-Object{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; } ;
