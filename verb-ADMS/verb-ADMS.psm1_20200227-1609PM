@@ -1,11 +1,11 @@
-﻿# verb-ADMS.psm1
+# verb-ADMS.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.2.0
+  Version     : 1.0.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -66,7 +66,6 @@
   https://github.com/tostka/verb-ADMS
   #>
 
-
 $script:ModuleRoot = $PSScriptRoot ;
 $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
 
@@ -75,8 +74,6 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 Export-ModuleMember -Alias * ;
 
 
-
-#*------v load-ADMS.ps1 v------
 function load-ADMS {
     <#
     .SYNOPSIS
@@ -111,7 +108,7 @@ function load-ADMS {
     if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
     write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):(loading ADMS...)" ;
     load-ADMS | out-null ;
-    #load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ;
+    #load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ; 
     Demo a load from the verb-ADMS.ps1 module, with opt specific -Cmdlet set
     #>
     PARAM(
@@ -122,34 +119,31 @@ function load-ADMS {
     # check registred v loaded ;
     #$ModsReg=Get-Module -ListAvailable;
     # focus both of the above to SPEED them UP!
-    $tMod = "ActiveDirectory" ;
-    $ModsReg=Get-Module -Name $tMod -ListAvailable ;
+    $tMod = "ActiveDirectory" ; 
+    $ModsReg=Get-Module -Name $tMod -ListAvailable ; 
     #$ModsLoad=Get-Module;
-    $ModsLoad=Get-Module -name $tMod ;
-    $pltAD=@{Name=$tMod ; ErrorAction="Stop" } ;
+    $ModsLoad=Get-Module -name $tMod ; 
+    $pltAD=@{Name=$tMod ; ErrorAction="Stop" } ; 
     if($Cmdlet){$pltAD.add('Cmdlet',$Cmdlet) } ;
     #if ($ModsReg | where {$_.Name -eq $tMod}) {
     if ($ModsReg) {
         #if (!($ModsLoad | where {$_.Name -eq $tMod})) {
         if (!($ModsLoad)) {
-            $env:ADPS_LoadDefaultDrive = 0 ;
+            $env:ADPS_LoadDefaultDrive = 0 ; 
             #import-module -Name $tMod -Cmdlet:$($Cmdlet) -ErrorAction Stop ;return $TRUE;
-            import-module @pltAD;
+            import-module @pltAD; 
             return $TRUE;
         } else {
             return $TRUE;
-        } # if-E ;
+        } # if-E ; 
     } else {
         Write-Error {"$((get-date).ToString('HH:mm:ss')):($env:computername) does not have AD Mgmt Tools installed!";};
         return $FALSE
-    } # if-E ;
+    } # if-E ; 
 } #*----------^END Function load-ADMS ^----------
 # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
-if(!(get-alias | Where-Object{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; }
+if(!(get-alias | ?{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; }
 
-#*------^ load-ADMS.ps1 ^------
-
-#*------v Sync-AD.ps1 v------
 Function Sync-AD { 
     # let's you trigger a replication between DCs. This function needs further tweaks for re-usability
     # from dsoldow's https://github.com/dsolodow/IndyPoSH/blob/master/Profile.ps1
@@ -163,13 +157,11 @@ Function Sync-AD {
     Start-Process -Credential $admin -FilePath repadmin -ArgumentList "/replicate $DestinationDC $SourceDC $DirectoryPartition" -WindowStyle Hidden ; 
 }
 
-#*------^ Sync-AD.ps1 ^------
-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUNelQJ/T1O/Ram/67/Bm+pike
-# 96CgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU0ZMj8WWpx1T1cMY9ONF1Sx/C
+# l6CgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -184,9 +176,9 @@ Function Sync-AD {
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTFVciG
-# 1is2yFUpUyJc7cEgx6oMoDANBgkqhkiG9w0BAQEFAASBgCwrM/TxA8b1XvZhr6Ov
-# hfMczePLT/AEHphBzBOJjxEx0C7tdxf4lyx/psMIcX8NCfWy79zznEnbxJxKQke6
-# QdEqC+3ditzsR5rdrAxq0kYxXzqGkMDqOgwi3rXfbDcJQu1bXU3KC3t72gCfpSLK
-# wWHYxhqRY6bGSqHFxIdHHbcY
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSytobE
+# Yl0SNAnEKh8LxCebM22XqzANBgkqhkiG9w0BAQEFAASBgFXh1yToJCqRZLOB/+ol
+# 4r3H+6hxgR7j1Grohl2nxFRKsEJpw9OpyrbuD5o/wEReWdV+guoJueXabtSgY1px
+# 7m8fi1tcYx/LFNjiGnSsOv2H61zNiPmgtzvCBAQIF0qrJIczeMW58RcDSJ88CW2F
+# uvP7+5EhXtJaiCBMXtO82Kqv
 # SIG # End signature block
