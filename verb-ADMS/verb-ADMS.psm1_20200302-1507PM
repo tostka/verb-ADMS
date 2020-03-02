@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.3.0
+  Version     : 1.0.2.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -70,7 +70,9 @@
 $script:ModuleRoot = $PSScriptRoot ;
 $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
 
-#*======v FUNCTIONS v======
+
+# Auto-export all Aliases
+Export-ModuleMember -Alias * ;
 
 
 
@@ -163,16 +165,11 @@ Function Sync-AD {
 
 #*------^ Sync-AD.ps1 ^------
 
-#*======^ END FUNCTIONS ^======
-
-Export-ModuleMember -Function load-ADMS,Sync-AD -Alias *
-
-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUCHF/mS27T2GZDlevG3sroTJR
-# IdOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUNelQJ/T1O/Ram/67/Bm+pike
+# 96CgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -187,9 +184,9 @@ Export-ModuleMember -Function load-ADMS,Sync-AD -Alias *
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSF+W/W
-# 1cmvtlx1ly6gFgfuJ2C4rzANBgkqhkiG9w0BAQEFAASBgKFr18VfzR0u93Bfk/bR
-# SUqp1aOEpOGC0ujxIUPt+VMnen/7gWea3bpec74vTe4en2YFKi0HPp6Zl5UXre1N
-# mTazGjRBSmwrAmbJxGu2w/yfeD1DiY/dBUXuANrJkblB7BT5uj5RNuiOY0D15Oic
-# 09YlL2qv9JnwuiUet24z//xq
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTFVciG
+# 1is2yFUpUyJc7cEgx6oMoDANBgkqhkiG9w0BAQEFAASBgCwrM/TxA8b1XvZhr6Ov
+# hfMczePLT/AEHphBzBOJjxEx0C7tdxf4lyx/psMIcX8NCfWy79zznEnbxJxKQke6
+# QdEqC+3ditzsR5rdrAxq0kYxXzqGkMDqOgwi3rXfbDcJQu1bXU3KC3t72gCfpSLK
+# wWHYxhqRY6bGSqHFxIdHHbcY
 # SIG # End signature block
