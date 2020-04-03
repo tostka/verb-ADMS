@@ -40,22 +40,15 @@ function load-ADMS {
         [Parameter(HelpMessage="Specifies an array of cmdlets that this cmdlet imports from the module into the current session. Wildcard characters are permitted[-Cmdlet get-aduser]")]
         [ValidateNotNullOrEmpty()]$Cmdlet
     ) ;
-    # -Cmdlet
-    # check registred v loaded ;
-    #$ModsReg=Get-Module -ListAvailable;
-    # focus both of the above to SPEED them UP!
+    # focus specific cmdlet loads to SPEED them UP!
     $tMod = "ActiveDirectory" ;
     $ModsReg=Get-Module -Name $tMod -ListAvailable ;
-    #$ModsLoad=Get-Module;
     $ModsLoad=Get-Module -name $tMod ;
     $pltAD=@{Name=$tMod ; ErrorAction="Stop" } ;
     if($Cmdlet){$pltAD.add('Cmdlet',$Cmdlet) } ;
-    #if ($ModsReg | where {$_.Name -eq $tMod}) {
-    if ($ModsReg) {
-        #if (!($ModsLoad | where {$_.Name -eq $tMod})) {
+        if ($ModsReg) {
         if (!($ModsLoad)) {
             $env:ADPS_LoadDefaultDrive = 0 ;
-            #import-module -Name $tMod -Cmdlet:$($Cmdlet) -ErrorAction Stop ;return $TRUE;
             import-module @pltAD;
             return $TRUE;
         } else {
