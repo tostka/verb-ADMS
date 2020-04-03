@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.6.0
+  Version     : 1.0.5.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -271,7 +271,7 @@ Function Validate-Password{
     .SYNOPSIS
     Validate-Password - Validate Password complexity, to Base AD Complexity standards
     .NOTES
-    Version     : 1.0.2
+    Version     : 1.0.1
     Author      : Shay Levy & commondollars
     Website     :	http://scriptolog.blogspot.com/2008/01/validating-password-strength.html
     Twitter     :	@tostka / http://twitter.com/tostka
@@ -311,7 +311,7 @@ Function Validate-Password{
     #>
     [CmdletBinding()]
     PARAM(
-        [Parameter(Mandatory=$True,HelpMessage="Password to be tested[-Pwd 'string']")]
+        [Parameter(Mandatory=$True,HelpMessage="Password to be tested[-Pwd "string"]")]
         [ValidateNotNullOrEmpty()]
         [string]$pwd,
         [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 8)[-minLen 10]")]
@@ -323,8 +323,7 @@ Function Validate-Password{
     if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
     if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
     if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
-    If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
-}
+    If ($isGood -ge 3){ write-output $true ;  } else { write-output $false}
 
 #*------^ Validate-Password.ps1 ^------
 
@@ -336,8 +335,8 @@ Export-ModuleMember -Function Get-AdminInitials,get-SiteMbxOU,load-ADMS,Sync-AD,
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUz5j4milDrHAbBG1AjizGvpXI
-# 5nugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUTig3Y5C9VlMrqd2J0LQcy8XZ
+# WSGgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -352,9 +351,9 @@ Export-ModuleMember -Function Get-AdminInitials,get-SiteMbxOU,load-ADMS,Sync-AD,
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTF7A7R
-# 10ljyESNlvvpSDsFVnf2HDANBgkqhkiG9w0BAQEFAASBgDDoNANNwWZebK4XYbf1
-# tL1WjgJh1zyBAseZgjrti3oVzgeYp+8EGdeNszN1rYBWYzH2yd1ri5o7oUHbjoHi
-# GKSLjPligAH4wRISwYzep0OLCnKqTstImZi93yBq8dvbVBAWAiekHU3bC3ANvTMQ
-# lEroMO2V3eiXddNT0NRqe0NX
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTiD3M2
+# C8tGV8v9QaHUZ68fD/RjUTANBgkqhkiG9w0BAQEFAASBgC6nQjRcXPBfq9sNmAuJ
+# OY++cQvsKSZdH+0fGsy1zElygXIayuxWnjMNlZ36GublmV9cov0cSq2bhuCRMOix
+# +XCVuxLRgue5WIU5sOoP4RrecBRarIYrKCYxHzVTtvtI/vT4sdt6Xx4Bo9S6ZPrE
+# BvdlcwaTboEgdwgoX66ul349
 # SIG # End signature block

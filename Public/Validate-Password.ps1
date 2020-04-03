@@ -4,7 +4,7 @@ Function Validate-Password{
     .SYNOPSIS
     Validate-Password - Validate Password complexity, to Base AD Complexity standards
     .NOTES
-    Version     : 1.0.1
+    Version     : 1.0.2
     Author      : Shay Levy & commondollars
     Website     :	http://scriptolog.blogspot.com/2008/01/validating-password-strength.html
     Twitter     :	@tostka / http://twitter.com/tostka
@@ -44,7 +44,7 @@ Function Validate-Password{
     #>
     [CmdletBinding()]
     PARAM(
-        [Parameter(Mandatory=$True,HelpMessage="Password to be tested[-Pwd "string"]")]
+        [Parameter(Mandatory=$True,HelpMessage="Password to be tested[-Pwd 'string']")]
         [ValidateNotNullOrEmpty()]
         [string]$pwd,
         [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 8)[-minLen 10]")]
