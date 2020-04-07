@@ -1,11 +1,11 @@
-﻿# verb-adms.psm1
+﻿# verb-ADMS.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.7.0
+  Version     : 1.0.6.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -336,8 +336,8 @@ Export-ModuleMember -Function Get-AdminInitials,get-SiteMbxOU,load-ADMS,Sync-AD,
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUxsqBSJapCU+IkDshMaoM0lNF
-# Z8qgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUz5j4milDrHAbBG1AjizGvpXI
+# 5nugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -352,9 +352,9 @@ Export-ModuleMember -Function Get-AdminInitials,get-SiteMbxOU,load-ADMS,Sync-AD,
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTUgD8/
-# oh1JrjKeYh20kjfZZgEz5zANBgkqhkiG9w0BAQEFAASBgKdcTbl5aBScedxqCuTv
-# 2T+nhvxXTmOvXvtxmmEKT0Laj7dUz5gyZ3glrFVdxyUgHNmm/TRgMgxpCiblTr94
-# I0+85qrFmQsSIWOwGamSf6QldZEEOqKGwUxT3SP8CQs4PZZBRrBgHPysGAl79ULn
-# 9GlHXXvsieePQXrUqMl9lP2s
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTF7A7R
+# 10ljyESNlvvpSDsFVnf2HDANBgkqhkiG9w0BAQEFAASBgDDoNANNwWZebK4XYbf1
+# tL1WjgJh1zyBAseZgjrti3oVzgeYp+8EGdeNszN1rYBWYzH2yd1ri5o7oUHbjoHi
+# GKSLjPligAH4wRISwYzep0OLCnKqTstImZi93yBq8dvbVBAWAiekHU3bC3ANvTMQ
+# lEroMO2V3eiXddNT0NRqe0NX
 # SIG # End signature block
