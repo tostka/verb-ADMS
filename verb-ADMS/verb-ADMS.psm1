@@ -1,11 +1,11 @@
-﻿# verb-adms.psm1
+﻿# verb-ADMS.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.7.0
+  Version     : 1.0.8.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -110,6 +110,51 @@ function Get-AdminInitials {
 }
 
 #*------^ Get-AdminInitials.ps1 ^------
+
+#*------v get-ADRootSiteOUs.ps1 v------
+function get-ADRootSiteOUs {
+    <#
+    .SYNOPSIS
+    get-ADRootSiteOUs() - Retrieves the Name ('SiteCode') & DistinguishedName for all first-level Site OUs (filters on ^OU=(\w{3}|PACRIM))
+    .NOTES
+    Version     : 1.0.1
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-10
+    FileName    : 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,ActiveDirectory
+    REVISIONS
+    * 8:24 AM 4/10/2020 init
+    .DESCRIPTION
+    get-ADRootSiteOUs() - Retrieves the 'Office' Site OUs (filters on ^OU=(\w{3}|PACRIM))
+    .OUTPUT
+    Returns an object containing the Name and DN of all matching OUs
+    .EXAMPLE
+    $RootOUs=get-ADRootSiteOUs 
+    Retrieve the Name & DN for all OUs
+    .LINK
+    #>
+    [CmdletBinding()]
+    PARAM (
+        
+    ) ;  # PARAM-E
+    $verbose = ($VerbosePreference -eq "Continue") ; 
+    $error.clear() ;
+    $rgxRootSiteOUs='^OU=(\w{3}|PACRIM),DC=global,DC=ad,DC=toro,DC=com' ; 
+    TRY {
+        $OUs= Get-ADOrganizationalUnit -server global.ad.toro.com  -LDAPFilter '(DistinguishedName=*)' -SearchBase 'DC=global,DC=ad,DC=toro,DC=com' -SearchScope OneLevel |?{$_.DistinguishedName -match $rgxRootSiteOUs} | select Name,DistinguishedName ;
+        write-output $OUs
+    } CATCH {
+        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        Continue #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ; 
+    } ; 
+}
+
+#*------^ get-ADRootSiteOUs.ps1 ^------
 
 #*------v get-SiteMbxOU.ps1 v------
 function get-SiteMbxOU {
@@ -330,14 +375,14 @@ Function Validate-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Get-AdminInitials,get-SiteMbxOU,load-ADMS,Sync-AD,Validate-Password -Alias *
+Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,load-ADMS,Sync-AD,Validate-Password -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUxsqBSJapCU+IkDshMaoM0lNF
-# Z8qgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUwuObInDhcYSoVK8dqNGEjQT0
+# BBOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -352,9 +397,9 @@ Export-ModuleMember -Function Get-AdminInitials,get-SiteMbxOU,load-ADMS,Sync-AD,
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTUgD8/
-# oh1JrjKeYh20kjfZZgEz5zANBgkqhkiG9w0BAQEFAASBgKdcTbl5aBScedxqCuTv
-# 2T+nhvxXTmOvXvtxmmEKT0Laj7dUz5gyZ3glrFVdxyUgHNmm/TRgMgxpCiblTr94
-# I0+85qrFmQsSIWOwGamSf6QldZEEOqKGwUxT3SP8CQs4PZZBRrBgHPysGAl79ULn
-# 9GlHXXvsieePQXrUqMl9lP2s
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRQ1TKo
+# vMHA7ll49rKzLqyF7qIHWTANBgkqhkiG9w0BAQEFAASBgFq6BtrQgPPK55wCOaeY
+# ixdil+uSnQRNz597dohad7h2DM1N3NRcE3lrBizUQ6pvd5RwOghf4pCTKC6qg2g/
+# Kt2iHD3k+usDdd4ud8LG1OAKny8AK+3jpv5vd+qCdMNhKX37+RHSpYu2D8aiyW3j
+# 6aKpc7+qEgYzrqOczCgoX8ot
 # SIG # End signature block
