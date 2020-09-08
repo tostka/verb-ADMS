@@ -12,7 +12,7 @@
 RootModule = 'verb-ADMS.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.8'
+ModuleVersion = '1.0.10'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'ActiveDirectory PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Get-AdminInitials','get-ADRootSiteOUs','get-SiteMbxOU','load-ADMS','Sync-AD','Validate-Password')
+FunctionsToExport = @('Get-AdminInitials','get-ADRootSiteOUs','get-SiteMbxOU','load-ADMS','mount-ADForestDrives','Sync-AD','Validate-Password')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU3keqP5CtKRBlqdcqWscmNj4w
-# /eygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUOZ8dkidV4ACq8yl776MefsvX
+# ZGCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTG8cBg
-# ouAXaReJ6OpLk87/UITZFzANBgkqhkiG9w0BAQEFAASBgAblmBVqg7E8eZlinlNQ
-# t4eE0T/GLMUsWiCASAHpxmRhFyE+C5MP4DsBXMAIgQlSLXofQ9sGmQuB7f5HDK3J
-# pU1grAjbmOhl0P+45jioFo9lRkTGHdn2nLQHtc+8u3cJztFTGzUMW5aEFm7p+MCC
-# K9WTk4bY1BTXGZKehpojNYUl
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTubVSk
+# /zAYQ4Faclh1AtNpEWWsFTANBgkqhkiG9w0BAQEFAASBgJVRqghwfgrrdy/NQMMA
+# hLEPEveYneDzrh4H6Wwol/brUGhEVHqK0KPgGyn6RgcEs+X0oB7IgoQNPqk27KGM
+# gPUN/p7uAJlNGONBytgGuw7jFfyiJCdPN0gd0jvyAz24u4XjOt6ARDHlRxdlc+WF
+# vGQ07QlZLKrrT3ArItrZ2vyU
 # SIG # End signature block
