@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.10.0
+  Version     : 1.0.12.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -336,7 +336,15 @@ function mount-ADForestDrives {
     $ADPsDriveNames |  Remove-PSDrive -Force ;
     $result ;
     Query and mount AD PSDrives for all Forests configured by XXXMeta.ADForestName variables, then run get-aduser for the administrator account
+    .EXAMPLE
+    # to access AD in a remote forest: resolve the ADForestName to the equiv PSDriveName, and use Set-Location to change context to the forest
+Set-Location -Path "$(($ADForestDrive |?{$_.Name -eq (gv -name "$($TenOrg)Meta").value.ADForestName.replace('.','')).Name):" ;
+get-aduser -id XXXX ; 
+    #... 
+    # at end of script, cleanup the mappings:
+    if($ADForestDrives){$ADForestDrives.Name| Remove-PSDrive -Name $_.Name -Force } ;
     .LINK
+    https://github.com/tostka/verb-adms
     #>
     #Requires -Version 3
     #requires -PSEdition Desktop
@@ -351,7 +359,7 @@ function mount-ADForestDrives {
     ) ;
     BEGIN {
         $Verbose = ($VerbosePreference -eq 'Continue') ;
-        $rgxDriveBanChars = '[;~/\\\.:]' ;
+        $rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:
     }
     PROCESS {
         $error.clear() ;
@@ -519,8 +527,8 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUGQmnfnMO/J6+hFHqdOaRJCdd
-# 6nigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQURTi8Ax0238KuBP6319AxESVC
+# NEmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -535,9 +543,9 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRGG1/1
-# UH+XPdz9R0OLVdN4WmOymTANBgkqhkiG9w0BAQEFAASBgJnZ2XnCb7uJRNlyqxHE
-# dWTavBmnZWp5c014FwzpwZmhwpqMf5zaZT/hzdkoE+f0BnmQjrLoFFGhIkKayT0K
-# YdgCGV/9x+2Ppsvq7vGz78D2l571PzQKgDd7OnOfLQ99R3013TmvlSjXGde3sa7n
-# Y70QO/ELcYnScrWlX4byMQe6
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBR7MDLx
+# coD8w3DfhHHfuOubmpo7UTANBgkqhkiG9w0BAQEFAASBgLnc0H3+KwBExuFzNgy2
+# zEfFc8ydRvc8Iai6hwh+q09qFlvsi67MpSeCs+Br8huAR8YD8AxX5MCSrG4/fqS3
+# 5X7DfvsfcD7OrSBKSnBLC0ttdysjnuyN48hMuOa0hExEplbr2RnfXXk/x07Lx8TJ
+# OdEcehZEVpZmSn1O5Y9gEGzf
 # SIG # End signature block

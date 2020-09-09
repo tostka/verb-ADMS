@@ -40,6 +40,13 @@ function mount-ADForestDrives {
     $ADPsDriveNames |  Remove-PSDrive -Force ;
     $result ;
     Query and mount AD PSDrives for all Forests configured by XXXMeta.ADForestName variables, then run get-aduser for the administrator account
+    .EXAMPLE
+    # to access AD in a remote forest: resolve the ADForestName to the equiv PSDriveName, and use Set-Location to change context to the forest
+Set-Location -Path "$(($ADForestDrive |?{$_.Name -eq (gv -name "$($TenOrg)Meta").value.ADForestName.replace('.','')).Name):" ;
+get-aduser -id XXXX ; 
+    #... 
+    # at end of script, cleanup the mappings:
+    if($ADForestDrives){$ADForestDrives.Name| Remove-PSDrive -Name $_.Name -Force } ;
     .LINK
     https://github.com/tostka/verb-adms
     #>
@@ -56,7 +63,7 @@ function mount-ADForestDrives {
     ) ;
     BEGIN {
         $Verbose = ($VerbosePreference -eq 'Continue') ;
-        $rgxDriveBanChars = '[;~/\\\.:]' ;
+        $rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:
     }
     PROCESS {
         $error.clear() ;
