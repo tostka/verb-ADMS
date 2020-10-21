@@ -1,4 +1,4 @@
-#*------v Function mount-ADForestDrives v------
+#*------v mount-ADForestDrives.ps1 v------
 function mount-ADForestDrives {
     <#
     .SYNOPSIS
@@ -18,6 +18,8 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    # 3:02 PM 10/21/2020 debugged to function - connects fr TOR into TOR,TOL & CMW wo errors fr laptop, updated/expanded CBH examples; fixed missing break in OP_SIDAcct test
+    # 7:59 AM 10/19/2020 added pretest before import-module
     4:11 PM 9/8/2020 building into verb-ADMS ; debugged through to TOR function, need fw access open on ports, to remote forest dc's: 5985 (default HTTP min), 5986 (HTTPS), 80 (pre-win7 http variant), 443 (pre-win7 https variant), 9389 (AD Web Svcs)
     * 10:29 AM 9/3/2020 init, still WIP, haven't fully debugged to function
     .DESCRIPTION
@@ -42,11 +44,15 @@ function mount-ADForestDrives {
     Query and mount AD PSDrives for all Forests configured by XXXMeta.ADForestName variables, then run get-aduser for the administrator account
     .EXAMPLE
     # to access AD in a remote forest: resolve the ADForestName to the equiv PSDriveName, and use Set-Location to change context to the forest
-Set-Location -Path "$(($ADForestDrive |?{$_.Name -eq (gv -name "$($TenOrg)Meta").value.ADForestName.replace('.','')).Name):" ;
-get-aduser -id XXXX ; 
+    Set-Location -Path "$(($ADForestDrive |?{$_.Name -eq (gv -name "$($TenOrg)Meta").value.ADForestName.replace('.','')).Name):" ;
+    get-aduser -id XXXX ; 
     #... 
     # at end of script, cleanup the mappings:
     if($ADForestDrives){$ADForestDrives.Name| Remove-PSDrive -Name $_.Name -Force } ;
+    .EXAMPLE
+    # to access AD in a remote forest: use the returned PSDrive name for the proper forest with Set-Location to change context to the forest
+    Set-Location -Path adtorocom ;
+    get-aduser -id XXXX ; 
     .LINK
     https://github.com/tostka/verb-adms
     #>
@@ -76,46 +82,121 @@ get-aduser -id XXXX ;
             write-verbose "-torOnly specified, restricting config to TOR forest only"
             $globalMetas = $globalMetas | Where-Object { $_.value.o365_Prefix -eq 'TOR' } ;
         }
+
+        # predetect context/role:
+        foreach ($globalMeta in $globalMetas) {
+            $smsg = "(checking:$(($globalMeta.value)['o365_Prefix']):acct context)" ; 
+            if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            if($globalMeta.value.OP_ESvcAcct){
+                #if($env:username -eq $globalMeta.value.OP_ESvcAcct.split('\')[1]) {
+                if("$($env:userdomain)\$($env:username)" -eq $globalMeta.value.OP_ESvcAcct) {
+                    $userRole = 'ESvc' ; 
+                    break ; 
+                } 
+            } ;
+            if($globalMeta.value.OP_LSvcAcct){
+                #if("$($env:userdomain)\$($env:username)" -eq "$($globalMeta.value.OP_LSvcAcct.split('\')[1]) {
+                if("$($env:userdomain)\$($env:username)" -eq $globalMeta.value.OP_LSvcAcct) {
+                    # script is running under svc acct UserRoles
+                    $userRole = 'LSvc' ; 
+                    break ; 
+                } ;
+            } ;
+            if($globalMeta.value.OP_SIDAcct){
+                #if($env:username -eq $globalMeta.value.OP_SIDAcct.split('\')[1] ){
+                if("$($env:userdomain)\$($env:username)" -eq $globalMeta.value.OP_SIDAcct){
+                    $userRole = 'SID' ; 
+                    break ; 
+                } ; 
+            } ; 
+        } ;  # loop-E
+
+        if($userrole){
+            $smsg = "($($env:username): Detected `$UserRole:$($UserRole))" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } else { 
+                throw "Unrecognized local logon: $($env:userdomain)\$($env:username)!" ; 
+        } ; 
+
         foreach ($globalMeta in $globalMetas) {
 
             $TenOrg = $legacyDomain = $prefCred = $null ;
             $TenOrg = ($globalMeta.value)['o365_Prefix'] ;
-            $legacyDomain = ($globalMeta.value)['legacyDomain'] ;
-            switch ($TenOrg) {
-                "TOL" {$prefCred = "credTOLSID" }
-                "TOR" {$prefCred = "credTORSID" }
-                "CMW" {$prefCred = "credCMWSID" }
-                # no curr onprem grants
-                "VEN" {$prefCred = "" }
-                default {
-                    throw "Unrecoginzed `$TenOrg!:$($TenOrg)"
-                }
+            if($TenOrg -eq 'VEN'){
+                Stop
             } ;
-            $SIDcred = $ForName = $null ;
-            if($prefCred){
-                $SIDcred = (Get-Variable -name $($prefCred)).Value ;
-                $ForName = (Get-Variable  -name "$($TenOrg)Meta").value.ADForestName ;
-                write-verbose "Processing forest:$($TenOrg):$($legacyDomain)::$($ForName)::$($SIDcred.username)";
-                $forests.add($ForName,$SIDcred) ;
-            }else {
-                write-verbose "*SKIP*:Processing forest:$($TenOrg):::(UNCONFIGURED)";
-            } ;
+            
+            if($legacyDomain = ($globalMeta.value)['legacyDomain']){
+                <#
+                switch ($TenOrg) {
+                    "TOL" {$prefCred = "credTOLSID" }
+                    "TOR" {$prefCred = "credTORSID" }
+                    "CMW" {$prefCred = "credCMWSID" }
+                    # no curr onprem grants
+                    "VEN" {$prefCred = "" }
+                    default {
+                        throw "Unrecoginzed `$TenOrg!:$($TenOrg)"
+                    }
+                } ;
+                #>
+                # use $prefCred=get-HybridOPCredentials -TenOrg $TenOrg -verbose -userrole SID ;
+                # use $prefCred=get-TenantCredentials -TenOrg $TenOrg -verbose -userrole SID ;
+            
+            
+                $adminCred = $ForName = $null ;
+                $adminCred=get-HybridOPCredentials -TenOrg $TenOrg -verbose -userrole $userRole ; 
+                if($adminCred){
+                    #$adminCred = (Get-Variable -name $($prefCred)).Value ;
+                    $ForestSName = (Get-Variable  -name "$($TenOrg)Meta").value.ADForestName ;
+                    $smsg = "Processing forest:$($TenOrg):$($legacyDomain)::$($ForestSName)::$($adminCred.username)";
+                    if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    $forests.add($ForestSName,$adminCred) ;
+                }else {
+                    $smsg = "*SKIP*:Processing forest:$($TenOrg):::(UNCONFIGURED)";
+                    if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                } ;
+            } else { 
+                 $smsg = "*SKIP*:Processing forest:$($TenOrg):::(no `$$($TenOrg)Meta.LegacyDomain value configured)"; ; 
+                if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            } ; 
+ 
         } ; # loop-E
 
-        Import-Module -Name ActiveDirectory ;
+        if(-not(get-module ActiveDirectory)){
+            # suppress VerbosePreference:Continue, if set, during mod loads (VERY NOISEY)
+            if($VerbosePreference = "Continue"){
+                $VerbosePrefPrior = $VerbosePreference ;
+                $VerbosePreference = "SilentlyContinue" ;
+                $verbose = ($VerbosePreference -eq "Continue") ;
+            } ; 
+            Import-Module -Name ActiveDirectory -Verbose:($VerbosePreference -eq 'Continue') ; 
+            # reenable VerbosePreference:Continue, if set, during mod loads 
+            if($VerbosePrefPrior -eq "Continue"){
+                $VerbosePreference = $VerbosePrefPrior ;
+                $verbose = ($VerbosePreference -eq "Continue") ;
+            } ; 
+        } ; 
 
-        foreach ($forestShortName in $forest.keys) {
+        foreach ($forestShortName in $forests.keys) {
+        #foreach ($forest in $forests) {
             TRY {
                 $forestDN = (Get-ADRootDSE -Server $forestShortName).defaultNamingContext ;
                 $pltNpsD=@{
                     Name=($forestShortName -replace $rgxDriveBanChars) ;
                     Root=$forestDN ;
                     PSProvider='ActiveDirectory' ;
-                    Credential =$SIDcred ;
+                    Credential =$forests[$forestShortName].cred ; 
                     Server=$forestShortName ;
                     whatif=$($whatif);
                 }
-                write-verbose "$((get-date).ToString('HH:mm:ss')):Creating AD Forest PSdrive:`nNew-PSDrive w`n$(($pltNpsD|out-string).trim())" ;
+                $smsg = "Creating AD Forest PSdrive:`nNew-PSDrive w`n$(($pltNpsD|out-string).trim())" ;
+                if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                 $bRet = New-PSDrive @pltNpsD ;
             } CATCH {
                 Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
@@ -126,13 +207,13 @@ get-aduser -id XXXX ;
             if ($bRet) {
                 $retHash = @{
                     Name     = $bRet.Name ;
-                    UserName = $SIDCred.username ;
+                    UserName = $forests[$forestShortName].cred.username ;
                     Status   = $true ;
                 }
             } else {
                 $retHash = @{
                     Name     = $pltNpsD.Name ;
-                    UserName = $SIDCred.username ;
+                    UserName = $forests[$forestShortName].cred.username ;
                     Status = $false  ;
                 } ;
             }
@@ -140,6 +221,6 @@ get-aduser -id XXXX ;
         } ; # loop-E
     } # PROC-E
     END {} ;
-} #*------^ END Function mount-ADForestDrives ^------
+}
 
-#$PSDriveNames = mount-ADForestDrives -verbose -toronly
+#*------^ mount-ADForestDrives.ps1 ^------

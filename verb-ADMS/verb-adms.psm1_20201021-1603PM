@@ -1,4 +1,4 @@
-# verb-adms.psm1
+﻿# verb-adms.psm1
 
 
   <#
@@ -314,7 +314,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
-    # 3:02 PM 10/21/2020 debugged to function - connects fr TOR into TOR,TOL & CMW wo errors fr laptop, updated/expanded CBH examples; fixed missing break in OP_SIDAcct test
+    # 3:02 PM 10/21/2020 debugged to function - connects fr TOR into TOR,TOL & CMW wo errors fr laptop, updated/expanded CBH examples
     # 7:59 AM 10/19/2020 added pretest before import-module
     4:11 PM 9/8/2020 building into verb-ADMS ; debugged through to TOR function, need fw access open on ports, to remote forest dc's: 5985 (default HTTP min), 5986 (HTTPS), 80 (pre-win7 http variant), 443 (pre-win7 https variant), 9389 (AD Web Svcs)
     * 10:29 AM 9/3/2020 init, still WIP, haven't fully debugged to function
@@ -390,20 +390,17 @@ function mount-ADForestDrives {
                     $userRole = 'ESvc' ; 
                     break ; 
                 } 
-            } ;
-            if($globalMeta.value.OP_LSvcAcct){
+            } elseif($globalMeta.value.OP_LSvcAcct){
                 #if("$($env:userdomain)\$($env:username)" -eq "$($globalMeta.value.OP_LSvcAcct.split('\')[1]) {
                 if("$($env:userdomain)\$($env:username)" -eq $globalMeta.value.OP_LSvcAcct) {
                     # script is running under svc acct UserRoles
                     $userRole = 'LSvc' ; 
                     break ; 
                 } ;
-            } ;
-            if($globalMeta.value.OP_SIDAcct){
+            } elseif($globalMeta.value.OP_SIDAcct){
                 #if($env:username -eq $globalMeta.value.OP_SIDAcct.split('\')[1] ){
                 if("$($env:userdomain)\$($env:username)" -eq $globalMeta.value.OP_SIDAcct){
                     $userRole = 'SID' ; 
-                    break ; 
                 } ; 
             } ; 
         } ;  # loop-E
@@ -604,3 +601,29 @@ Function Validate-Password{
 
 Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,Validate-Password -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUCijxp35Ip9d1Tov7t6N3kNJh
+# YLqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSIdTCH
+# Hp36gAaeqTKEg3QY4wpTRTANBgkqhkiG9w0BAQEFAASBgJTCYjr4idbQ4EG82rgl
+# 98QbGb40WQXB5L0KjFOYEfYoJM1xZvF5lvNVOVaQG3t2tmPyR1Je1MxRRjzRHzMw
+# FI/fWClVsVv8qaCp/FkotyjCB+y9GIuxK48uySMK29HeLCcl5dPf5OSC/BzMlzWF
+# ouhRbyDgU5tzUtwuEVCQOjBJ
+# SIG # End signature block
