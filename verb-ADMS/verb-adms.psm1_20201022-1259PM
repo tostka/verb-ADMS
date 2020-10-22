@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.17.0
+  Version     : 1.0.15.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -547,8 +547,7 @@ function mount-ADForestDrives {
             New-Object PSObject -Property $retHash | write-output ;
         } ; # loop-E
     } # PROC-E
-    END {} ;
-}
+    END {}
 
 #*------^ mount-ADForestDrives.ps1 ^------
 
@@ -639,8 +638,8 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUlUlZn1s22fHPkPPfEvD/2RgB
-# dgqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU9TGfFjh2YBAAmghF6UNOYH1T
+# jfugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -655,9 +654,9 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTfZOPM
-# K4pDOZxgYAiEj/ZjOmK7eDANBgkqhkiG9w0BAQEFAASBgEt2iXlN/13U3pg6a2zW
-# dSgCvL5zRs2fSATYVYNlhYnll7UoFNl5DXgLZRaFWN3AuOFHd3coOebn4C1Z7UuL
-# dvSJ/stAwMShRf4Ay+Kv9AC4YOXRyTLNpDafcF6h4GlQzE3KCllFNBNqvVyrNun/
-# cmbcCjn1l/WgHzQf0PsNSs5A
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQvdzjK
+# UTUBxG1qVf9YQqe2VtRfKTANBgkqhkiG9w0BAQEFAASBgGa1InV86/Asj1pecJqW
+# aarWZCa93Zg2tgg6uOM+zj+r8/VY+qbQKBB/AlcHF0EA04dxYxuqxx2EvGjwe+WZ
+# XInRAKv2CjG07KWjdA2w/vVu23Ly69Ju2mw7ZtSpJ3ROlDdoxDCs/YXWrviXuxC5
+# u1rxGWhYRKhklmzdddzhdwD/
 # SIG # End signature block

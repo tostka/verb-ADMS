@@ -18,6 +18,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    # 12:39 PM 10/22/2020 fixed lack of persistence - can't use -persist, have to use Script or Global scope or created PSD evaps on function exit context.
     # 3:02 PM 10/21/2020 debugged to function - connects fr TOR into TOR,TOL & CMW wo errors fr laptop, updated/expanded CBH examples; fixed missing break in OP_SIDAcct test
     # 7:59 AM 10/19/2020 added pretest before import-module
     4:11 PM 9/8/2020 building into verb-ADMS ; debugged through to TOR function, need fw access open on ports, to remote forest dc's: 5985 (default HTTP min), 5986 (HTTPS), 80 (pre-win7 http variant), 443 (pre-win7 https variant), 9389 (AD Web Svcs)
@@ -27,6 +28,10 @@ function mount-ADForestDrives {
     Borrowed concept of a pre-configured array of $forests from Raimund's post.
     .PARAMETER TorOnly
     Switch to limit test to local 'TOR' forest [-TorOnly]
+    .PARAMETER Scope
+    New PSDrive Scope specification [Script|Global] (defaults Global, no scope == disappears on script exit) [-Scope Script]")]
+    -scope:Script: PSDrive persists for life of script run (Minimum, otherwise the PSDrive evaporates outside of creating function)
+    -scope:Global: Persists in global environment (note the normal -Persist variable doesn't work with AD PSProvider
     .PARAMETER whatIf
     Whatif SWITCH  [-whatIf]
     .OUTPUT
@@ -40,8 +45,12 @@ function mount-ADForestDrives {
     } ;
     # cleanup the drives & dump results
     $ADPsDriveNames |  Remove-PSDrive -Force ;
-    $result ;
     Query and mount AD PSDrives for all Forests configured by XXXMeta.ADForestName variables, then run get-aduser for the administrator account
+    .EXAMPLE
+    $ADPsDriveNames = mount-ADForestDrives ; 
+    $global:ADPsDriveNames |%{"==$($_.name):`t($($_.username))" ; test-path "$($_.name):" } ; 
+    if($ADForestDrives){$ADForestDrives.Name| Remove-PSDrive -Name $_.Name -Force } ;
+    Mount psdrives, then validate & echo their access, then remove the PSdrives
     .EXAMPLE
     # to access AD in a remote forest: resolve the ADForestName to the equiv PSDriveName, and use Set-Location to change context to the forest
     Set-Location -Path "$(($ADForestDrive |?{$_.Name -eq (gv -name "$($TenOrg)Meta").value.ADForestName.replace('.','')).Name):" ;
@@ -53,6 +62,17 @@ function mount-ADForestDrives {
     # to access AD in a remote forest: use the returned PSDrive name for the proper forest with Set-Location to change context to the forest
     Set-Location -Path adtorocom ;
     get-aduser -id XXXX ; 
+    .EXAMPLE
+    $ADPsDriveNames = mount-ADForestDrives ; 
+    # cd to AD Contaxt for the Org (target AD PsDrive)
+    cd cmwinternal:
+    # dump domain subdomains (domain fqdns):
+    $cfgRoot = (Get-ADRootDSE).configurationNamingContext ;
+    $subroots = (Get-ADObject -filter 'netbiosname -like "*"' -SearchBase "CN=Partitions,$
+cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
+    # query a user in a subdomain of the domain
+    get-aduser -id SAMACCOUNTNAME -Server $subroot[0]
+    Mount psdrives ; set-location a specific drive ; dump subdomains, and get-aduser a user in a subdomain 
     .LINK
     https://github.com/tostka/verb-adms
     #>
@@ -64,6 +84,9 @@ function mount-ADForestDrives {
     PARAM(
         [Parameter(HelpMessage = "Switch to limit test to local 'TOR' forest [-TorOnly]")]
         [switch] $TorOnly,
+        [Parameter(HelpMessage = "New PSDrive Scope specification [Script|Global] (defaults Global, no scope == disappears on script exit) [-TorOnly]")]
+        [ValidateSet('Script','Global')]
+        [string] $Scope='Global',
         [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
         [switch] $whatIf
     ) ;
@@ -125,7 +148,7 @@ function mount-ADForestDrives {
             $TenOrg = $legacyDomain = $prefCred = $null ;
             $TenOrg = ($globalMeta.value)['o365_Prefix'] ;
             if($TenOrg -eq 'VEN'){
-                Stop
+                #Stop
             } ;
             
             if($legacyDomain = ($globalMeta.value)['legacyDomain']){
@@ -186,14 +209,33 @@ function mount-ADForestDrives {
         #foreach ($forest in $forests) {
             TRY {
                 $forestDN = (Get-ADRootDSE -Server $forestShortName).defaultNamingContext ;
+                <# New-PSDrive -Name -PSProvider -Root -Description -Scope -Persist
+                use -Persist, or it will immediately close
+                from within scripts, to have it persist outside of the script use -scope global
+                #>
+
+                # another expl: New-PSDrive -Name "RemoteAD" -PSProvider ActiveDirectory -root $Root -server $server -Scope Script
+                # Note Scope is Script.  If not set, disappears outside of function.  Can set to Global
+
                 $pltNpsD=@{
                     Name=($forestShortName -replace $rgxDriveBanChars) ;
                     Root=$forestDN ;
                     PSProvider='ActiveDirectory' ;
                     Credential =$forests[$forestShortName].cred ; 
                     Server=$forestShortName ;
+                    #Persist=$true ; # throws error: Error Message: When you use the Persist parameter, the root must be a file system location on a remote computer.
+                    Scope=$Scope ;
                     whatif=$($whatif);
                 }
+
+                #Remove drive if it pre-exists
+                if (Test-Path "$($pltNpsD.Name):"){
+                    if((get-location).path -like "$($pltNpsD.Name):*"){
+                        set-location c: ;   
+                    } ; 
+                    Remove-PSDrive $pltNpsD.Name ;
+                };
+
                 $smsg = "Creating AD Forest PSdrive:`nNew-PSDrive w`n$(($pltNpsD|out-string).trim())" ;
                 if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
