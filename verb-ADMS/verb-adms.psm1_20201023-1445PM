@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.23.0
+  Version     : 1.0.22.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -474,7 +474,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     # cross-org ADMS requires switching to the proper forest drive (and use of -server xxx.xxx.com to access subdomains o the forest)
     $pdir = get-location ;
     $rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:,
-    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@”]+$' ; 
+    $rgxSamAcctName = "^[^\/\\\[\]:;|=,+?<>@”]+$"
     # "^[-A-Za-z0-9]{2,20}$" ; # 2-20chars, alphanum plus dash
     $rgxemailaddr = "^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,6}$" ; 
     $rgxDistName = "^((CN=([^,]*)),)?((((?:CN|OU)=[^,]+,?)+),)?((DC=[^,]+,?)+)$" ; 
@@ -1216,8 +1216,8 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnBbNm2TK4CChm/QT8un3cRPs
-# PKygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU4IvSa4CcASvrVlrcbLuWLAdb
+# 5qegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1232,9 +1232,9 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSBj4F7
-# /zCOADFY3sxGLYLL8GIONzANBgkqhkiG9w0BAQEFAASBgBk/Dnrl9exR+cD5J91J
-# fiYQCtOz9Z0xYdvdGM+dOH2Sb7jWBKXBkJTrGeJALVeCfYjtohvNCZtG8C/17kRU
-# tBP1NUH7BP0QzHJE+N4RUDVm/odkN3aIxtoDT8N6Ra105eR66R+i6bKu8bZceCgm
-# BjgbebnPGlnVy+dYEelG9GQ5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQkuzer
+# 8yhkLzq9hdAcRWigXAcfFjANBgkqhkiG9w0BAQEFAASBgE47SIE/g/hVW9BAgw/E
+# EBHKngdLt8wsedJ/qMYv6g6Q2M7BncqbLh0/MIe2exeQQUTR8KU4LRBWTveOYmit
+# RAudfScI4uayAwMd5C72rDHy2fGOhWs+dpJNq2MB6OYRB/PDIu16z3f1VaPE+swJ
+# 5LR1Tm1ETf2ufvLOWBWlM+6h
 # SIG # End signature block
