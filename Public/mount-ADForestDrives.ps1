@@ -18,6 +18,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    # 7:05 AM 10/23/2020 added creation of $global:ADPsDriveNames when -Scope is global
     # 12:39 PM 10/22/2020 fixed lack of persistence - can't use -persist, have to use Script or Global scope or created PSD evaps on function exit context.
     # 3:02 PM 10/21/2020 debugged to function - connects fr TOR into TOR,TOL & CMW wo errors fr laptop, updated/expanded CBH examples; fixed missing break in OP_SIDAcct test
     # 7:59 AM 10/19/2020 added pretest before import-module
@@ -31,11 +32,12 @@ function mount-ADForestDrives {
     .PARAMETER Scope
     New PSDrive Scope specification [Script|Global] (defaults Global, no scope == disappears on script exit) [-Scope Script]")]
     -scope:Script: PSDrive persists for life of script run (Minimum, otherwise the PSDrive evaporates outside of creating function)
-    -scope:Global: Persists in global environment (note the normal -Persist variable doesn't work with AD PSProvider
+    -scope:Global: Persists in global environment, also autopopulates `$global:ADPsDriveNames variable (note the normal New-PSDrive '-Persist' variable doesn't work with AD PSProvider)
     .PARAMETER whatIf
     Whatif SWITCH  [-whatIf]
     .OUTPUT
-    Returns objects to pipeline, containing the Name and credential of PSDrives configured
+    System.Object[]
+    Returns System.Object[] to pipeline, summarizing the Name and credential of PSDrives configured
     .EXAMPLE
     $ADPsDriveNames = mount-ADForestDrives ;
     $result = $ADPsDriveNames | ForEach-Object {
@@ -259,10 +261,16 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
                     Status = $false  ;
                 } ;
             }
+            if($scope -eq 'global'){
+                $smsg = "(creating/updating `$global:ADPsDriveNames with summary of the new PSdrives)" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $global:ADPsDriveNames = New-Object PSObject -Property $retHash 
+            } ; 
             New-Object PSObject -Property $retHash | write-output ;
         } ; # loop-E
     } # PROC-E
     END {} ;
-}
+} ; 
 
 #*------^ mount-ADForestDrives.ps1 ^------

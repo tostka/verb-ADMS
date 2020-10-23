@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.17.0
+  Version     : 1.0.21.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -314,6 +314,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    # 7:05 AM 10/23/2020 added creation of $global:ADPsDriveNames when -Scope is global
     # 12:39 PM 10/22/2020 fixed lack of persistence - can't use -persist, have to use Script or Global scope or created PSD evaps on function exit context.
     # 3:02 PM 10/21/2020 debugged to function - connects fr TOR into TOR,TOL & CMW wo errors fr laptop, updated/expanded CBH examples; fixed missing break in OP_SIDAcct test
     # 7:59 AM 10/19/2020 added pretest before import-module
@@ -327,11 +328,12 @@ function mount-ADForestDrives {
     .PARAMETER Scope
     New PSDrive Scope specification [Script|Global] (defaults Global, no scope == disappears on script exit) [-Scope Script]")]
     -scope:Script: PSDrive persists for life of script run (Minimum, otherwise the PSDrive evaporates outside of creating function)
-    -scope:Global: Persists in global environment (note the normal -Persist variable doesn't work with AD PSProvider
+    -scope:Global: Persists in global environment, also autopopulates `$global:ADPsDriveNames variable (note the normal New-PSDrive '-Persist' variable doesn't work with AD PSProvider)
     .PARAMETER whatIf
     Whatif SWITCH  [-whatIf]
     .OUTPUT
-    Returns objects to pipeline, containing the Name and credential of PSDrives configured
+    System.Object[]
+    Returns System.Object[] to pipeline, summarizing the Name and credential of PSDrives configured
     .EXAMPLE
     $ADPsDriveNames = mount-ADForestDrives ;
     $result = $ADPsDriveNames | ForEach-Object {
@@ -358,6 +360,17 @@ function mount-ADForestDrives {
     # to access AD in a remote forest: use the returned PSDrive name for the proper forest with Set-Location to change context to the forest
     Set-Location -Path adtorocom ;
     get-aduser -id XXXX ; 
+    .EXAMPLE
+    $ADPsDriveNames = mount-ADForestDrives ; 
+    # cd to AD Contaxt for the Org (target AD PsDrive)
+    cd cmwinternal:
+    # dump domain subdomains (domain fqdns):
+    $cfgRoot = (Get-ADRootDSE).configurationNamingContext ;
+    $subroots = (Get-ADObject -filter 'netbiosname -like "*"' -SearchBase "CN=Partitions,$
+cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
+    # query a user in a subdomain of the domain
+    get-aduser -id SAMACCOUNTNAME -Server $subroot[0]
+    Mount psdrives ; set-location a specific drive ; dump subdomains, and get-aduser a user in a subdomain 
     .LINK
     https://github.com/tostka/verb-adms
     #>
@@ -544,6 +557,12 @@ function mount-ADForestDrives {
                     Status = $false  ;
                 } ;
             }
+            if($scope -eq 'global'){
+                $smsg = "(creating/updating `$global:ADPsDriveNames with summary of the new PSdrives)" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $global:ADPsDriveNames = New-Object PSObject -Property $retHash 
+            } ; 
             New-Object PSObject -Property $retHash | write-output ;
         } ; # loop-E
     } # PROC-E
@@ -567,6 +586,74 @@ Function Sync-AD {
 }
 
 #*------^ Sync-AD.ps1 ^------
+
+#*------v umount-ADForestDrives.ps1 v------
+function unmount-ADForestDrives {
+    <#
+    .SYNOPSIS
+    unmount-ADForestDrives() - Unmount PSDrive objects mounted for cross-domain ADMS work (ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove solely those drives. Otherwise removes all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module). Returns $true/$false on pass status.
+    .NOTES
+    Version     : 1.0.1
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2020-10-23
+    FileName    : unmount-ADForestDrives
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-adms
+    Tags        : Powershell,ActiveDirectory,CrossForest
+    AddedCredit : Raimund (fr social.technet.microsoft.com comment)
+    AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
+    AddedTwitter:
+    REVISIONS
+    # 7:24 AM 10/23/2020 init 
+    .DESCRIPTION
+    unmount-ADForestDrives() - Unmount PSDrive objects mounted for cross-domain ADMS work (ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove solely those drives. Otherwise removes all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module)
+    .PARAMETER whatIf
+    Whatif SWITCH  [-whatIf]
+    .OUTPUT
+    System.Boolean
+    .EXAMPLE
+    $result = unmount-ADForestDrives ;
+    .LINK
+    https://github.com/tostka/verb-adms
+    #>
+    #Requires -Version 3
+    #Requires -Modules ActiveDirectory
+    #Requires -RunasAdministrator
+    [CmdletBinding()]
+    PARAM(
+        [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
+        [switch] $whatIf
+    ) ;
+    BEGIN {
+        $Verbose = ($VerbosePreference -eq 'Continue') ;
+        #$rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:
+    }
+    PROCESS {
+        $error.clear() ;
+
+        if($global:ADPsDriveNames){
+            write-verbose "(Existing `$global:ADPsDriveNames variable found: removing the following *explicit* AD PSDrives`n$(($global:ADPsDriveName|out-string).trim())" ; 
+            $tPsD = $global:ADPsDriveNames
+        } else {
+            write-verbose "(removing all PSProvider:ActiveDirectory PsDrives, *other* than any existing 'AD'-named drive)" ; 
+            $tPsD = Get-PSDrive -PSProvider ActiveDirectory|?{$_.name -ne 'AD'} ; 
+        }  ; 
+        TRY {
+            $bRet = $ADPsDriveNames |  Remove-PSDrive -Force -whatif:$($whatif) -verbose:$($verbose) ;
+            $true | write-output ;
+        } CATCH {
+            Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+            #BREAK ; #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ;
+            $false | write-output ;
+        } ;
+    } # PROC-E
+    END {} ;
+}
+
+#*------^ umount-ADForestDrives.ps1 ^------
 
 #*------v Validate-Password.ps1 v------
 Function Validate-Password{
@@ -633,14 +720,14 @@ Function Validate-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,Validate-Password -Alias *
+Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,unmount-ADForestDrives,Validate-Password -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUlUlZn1s22fHPkPPfEvD/2RgB
-# dgqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZCgHZ9qunT7WU8DncCeobzGW
+# N96gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -655,9 +742,9 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTfZOPM
-# K4pDOZxgYAiEj/ZjOmK7eDANBgkqhkiG9w0BAQEFAASBgEt2iXlN/13U3pg6a2zW
-# dSgCvL5zRs2fSATYVYNlhYnll7UoFNl5DXgLZRaFWN3AuOFHd3coOebn4C1Z7UuL
-# dvSJ/stAwMShRf4Ay+Kv9AC4YOXRyTLNpDafcF6h4GlQzE3KCllFNBNqvVyrNun/
-# cmbcCjn1l/WgHzQf0PsNSs5A
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRkvXsS
+# 1XEnHgO2axQ/04WgyxpIHTANBgkqhkiG9w0BAQEFAASBgFXx+hsAvJLDtXSGIIaE
+# mzi6PM5JOtyZtYIGkK5Dw61ZUioYAj8lBfgE4Wu+9cGLEnpCW7Z64J9fyjBPTgby
+# lNeTiXtmOp6wIlZbK2XeeNRvHdpxXWlD6ZyyCeLfROg13efZul0i7ipnV2m2oZFs
+# W0pouUHoeQe287DIc7c4hz/+
 # SIG # End signature block

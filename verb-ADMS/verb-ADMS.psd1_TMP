@@ -12,7 +12,7 @@
 RootModule = 'verb-ADMS.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.17'
+ModuleVersion = '1.0.21'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'ActiveDirectory PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Get-AdminInitials','get-ADRootSiteOUs','get-SiteMbxOU','load-ADMS','mount-ADForestDrives','Sync-AD','Validate-Password')
+FunctionsToExport = @('Get-AdminInitials','get-ADRootSiteOUs','get-SiteMbxOU','load-ADMS','mount-ADForestDrives','Sync-AD','unmount-ADForestDrives','Validate-Password')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6Mg47YOZUbUhtyXnt/xIJWBp
-# J8WgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUxXAYyFvjZTPx+UUpiJJ6DQx1
+# 24GgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTX5g4/
-# FucexT4yREAeLOSyS3Au/zANBgkqhkiG9w0BAQEFAASBgKg2bhv9f24AHTpKQHYo
-# OuynA+mMawRCLbftzvV7jORs61wEb8XxnKFOo957bjSR3lE1uxtXxJ+062gVRHiT
-# JdIUQz8RCFAvdXFWIeRgrqKJynGiqvEbY0lVz6sH/y6ylr2Ir1u/UlhDcohvtJG3
-# mNYJHaunS8sDWZLD9ewrZZoc
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT9uCgl
+# WT9zB8Qd6CjJZ9wBpgC5RzANBgkqhkiG9w0BAQEFAASBgAanWp4rOFPIVHYKtNWi
+# s9mlD2ZBFLB3NHO5iKFg0bnTFlGGqvdu2AmgJIT9j50I+7VbM9kZjDn89piMCBSD
+# jZlDTPMoqBLY7x2GSAjMkjm29Fl3ScmH/bfnJ1MlVs5RmSGO3wjV7/qWvse0+xR8
+# XSIVdD2LcypU59y5YbZtapXr
 # SIG # End signature block

@@ -1,11 +1,11 @@
-# verb-adms.psm1
+﻿# verb-adms.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.20.0
+  Version     : 1.0.18.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -587,74 +587,6 @@ Function Sync-AD {
 
 #*------^ Sync-AD.ps1 ^------
 
-#*------v umount-ADForestDrives.ps1 v------
-function unmount-ADForestDrives {
-    <#
-    .SYNOPSIS
-    unmount-ADForestDrives() - Unmount PSDrive objects mounted for cross-domain ADMS work (ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove solely those drives. Otherwise removes all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module). Returns $true/$false on pass status.
-    .NOTES
-    Version     : 1.0.1
-    Author      : Todd Kadrie
-    Website     :	http://www.toddomation.com
-    Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 2020-10-23
-    FileName    : unmount-ADForestDrives
-    License     : MIT License
-    Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka/verb-adms
-    Tags        : Powershell,ActiveDirectory,CrossForest
-    AddedCredit : Raimund (fr social.technet.microsoft.com comment)
-    AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
-    AddedTwitter:
-    REVISIONS
-    # 7:24 AM 10/23/2020 init 
-    .DESCRIPTION
-    unmount-ADForestDrives() - Unmount PSDrive objects mounted for cross-domain ADMS work (ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove solely those drives. Otherwise removes all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module)
-    .PARAMETER whatIf
-    Whatif SWITCH  [-whatIf]
-    .OUTPUT
-    System.Boolean
-    .EXAMPLE
-    $result = unmount-ADForestDrives ;
-    .LINK
-    https://github.com/tostka/verb-adms
-    #>
-    #Requires -Version 3
-    #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
-    [CmdletBinding()]
-    PARAM(
-        [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
-        [switch] $whatIf
-    ) ;
-    BEGIN {
-        $Verbose = ($VerbosePreference -eq 'Continue') ;
-        #$rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:
-    }
-    PROCESS {
-        $error.clear() ;
-
-        if($global:ADPsDriveNames){
-            write-verbose "(Existing `$global:ADPsDriveNames variable found: removing the following *explicit* AD PSDrives`n$(($global:ADPsDriveName|out-string).trim())" ; 
-            $tPsD = $global:ADPsDriveNames
-        } else {
-            write-verbose "(removing all PSProvider:ActiveDirectory PsDrives, *other* than any existing 'AD'-named drive)" ; 
-            $tPsD = Get-PSDrive -PSProvider ActiveDirectory|?{$_.name -ne 'AD'} ; 
-        }  ; 
-        TRY {
-            $bRet = $ADPsDriveNames |  Remove-PSDrive -Force -whatif:$($whatif) -verbose:$($verbose) ;
-            $true | write-output ;
-        } CATCH {
-            Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
-            #BREAK ; #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ;
-            $false | write-output ;
-        } ;
-    } # PROC-E
-    END {} ;
-}
-
-#*------^ umount-ADForestDrives.ps1 ^------
-
 #*------v Validate-Password.ps1 v------
 Function Validate-Password{
     <#
@@ -720,5 +652,31 @@ Function Validate-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,unmount-ADForestDrives,Validate-Password -Alias *
+Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,Validate-Password -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUn+mTBv+Q4uUSG5pcJpKtYCwY
+# QOCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSdzyIV
+# iYqSC8gPKK+MYWLNAjORWDANBgkqhkiG9w0BAQEFAASBgDvJjrWP7zfb7tZU9so3
+# qIp5t+HkkSkgYdYSxsETvoaMPSs/Q0cvbPuiol3bCg3l7vOOIQ/vWJX9bE0TFeW4
+# 8mdoaC2lbdhRsx0SePiBiPFH1AHNglK2Alcy7Dy6KsjtfXTTpULIGNvV5RuQBdq3
+# tLCeLg4NI7JkIdtmGdn8A+YH
+# SIG # End signature block
