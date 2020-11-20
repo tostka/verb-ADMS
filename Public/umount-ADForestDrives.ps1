@@ -27,6 +27,28 @@ function unmount-ADForestDrives {
     System.Boolean
     .EXAMPLE
     $result = unmount-ADForestDrives ;
+    Simple example
+    .EXAMPLE
+    if(!$global:ADPsDriveNames){
+        $smsg = "(connecting X-Org AD PSDrives)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        $global:ADPsDriveNames = mount-ADForestDrives -verbose:$($verbose) ;
+    } ; 
+    if(($global:ADPsDriveNames|measure).count){
+        $smsg = "Confirming ADMS PSDrives:`n$(($global:ADPsDriveNames.Name|%{get-psdrive -Name $_ -PSProvider ActiveDirectory} | ft -auto Name,Root,Provider|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    } else { 
+        $script:PassStatus += ";ERROR";
+        set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + ";ERROR") ;
+        $smsg = "Unable to detect POPULATED `$global:ADPsDriveNames!`n(should have multiple values, resolved to $()"
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        throw "Unable to resolve $($tenorg) `$o365Cred value!`nEXIT!"
+        exit ;
+    } ; 
+    Example with supporting/echo code
     .LINK
     https://github.com/tostka/verb-adms
     #>

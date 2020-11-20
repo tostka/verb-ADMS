@@ -1,11 +1,11 @@
-# verb-adms.psm1
+﻿# verb-adms.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.24.0
+  Version     : 1.0.23.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -1106,28 +1106,6 @@ function unmount-ADForestDrives {
     System.Boolean
     .EXAMPLE
     $result = unmount-ADForestDrives ;
-    Simple example
-    .EXAMPLE
-    if(!$global:ADPsDriveNames){
-        $smsg = "(connecting X-Org AD PSDrives)" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        $global:ADPsDriveNames = mount-ADForestDrives -verbose:$($verbose) ;
-    } ; 
-    if(($global:ADPsDriveNames|measure).count){
-        $smsg = "Confirming ADMS PSDrives:`n$(($global:ADPsDriveNames.Name|%{get-psdrive -Name $_ -PSProvider ActiveDirectory} | ft -auto Name,Root,Provider|out-string).trim())" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    } else { 
-        $script:PassStatus += ";ERROR";
-        set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + ";ERROR") ;
-        $smsg = "Unable to detect POPULATED `$global:ADPsDriveNames!`n(should have multiple values, resolved to $()"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        throw "Unable to resolve $($tenorg) `$o365Cred value!`nEXIT!"
-        exit ;
-    } ; 
-    Example with supporting/echo code
     .LINK
     https://github.com/tostka/verb-adms
     #>
@@ -1234,3 +1212,29 @@ Function Validate-Password{
 
 Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,unmount-ADForestDrives,Validate-Password -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnBbNm2TK4CChm/QT8un3cRPs
+# PKygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSBj4F7
+# /zCOADFY3sxGLYLL8GIONzANBgkqhkiG9w0BAQEFAASBgBk/Dnrl9exR+cD5J91J
+# fiYQCtOz9Z0xYdvdGM+dOH2Sb7jWBKXBkJTrGeJALVeCfYjtohvNCZtG8C/17kRU
+# tBP1NUH7BP0QzHJE+N4RUDVm/odkN3aIxtoDT8N6Ra105eR66R+i6bKu8bZceCgm
+# BjgbebnPGlnVy+dYEelG9GQ5
+# SIG # End signature block

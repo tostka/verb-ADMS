@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.23.0
+  Version     : 1.0.25.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -1106,6 +1106,28 @@ function unmount-ADForestDrives {
     System.Boolean
     .EXAMPLE
     $result = unmount-ADForestDrives ;
+    Simple example
+    .EXAMPLE
+    if(!$global:ADPsDriveNames){
+        $smsg = "(connecting X-Org AD PSDrives)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        $global:ADPsDriveNames = mount-ADForestDrives -verbose:$($verbose) ;
+    } ; 
+    if(($global:ADPsDriveNames|measure).count){
+        $smsg = "Confirming ADMS PSDrives:`n$(($global:ADPsDriveNames.Name|%{get-psdrive -Name $_ -PSProvider ActiveDirectory} | ft -auto Name,Root,Provider|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    } else { 
+        $script:PassStatus += ";ERROR";
+        set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + ";ERROR") ;
+        $smsg = "Unable to detect POPULATED `$global:ADPsDriveNames!`n(should have multiple values, resolved to $()"
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        throw "Unable to resolve $($tenorg) `$o365Cred value!`nEXIT!"
+        exit ;
+    } ; 
+    Example with supporting/echo code
     .LINK
     https://github.com/tostka/verb-adms
     #>
@@ -1216,8 +1238,8 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnBbNm2TK4CChm/QT8un3cRPs
-# PKygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQsDGE8Z5os26I/ktdgF3M6WJ
+# CyqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1232,9 +1254,9 @@ Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSBj4F7
-# /zCOADFY3sxGLYLL8GIONzANBgkqhkiG9w0BAQEFAASBgBk/Dnrl9exR+cD5J91J
-# fiYQCtOz9Z0xYdvdGM+dOH2Sb7jWBKXBkJTrGeJALVeCfYjtohvNCZtG8C/17kRU
-# tBP1NUH7BP0QzHJE+N4RUDVm/odkN3aIxtoDT8N6Ra105eR66R+i6bKu8bZceCgm
-# BjgbebnPGlnVy+dYEelG9GQ5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTq8Vso
+# LAOJtV+kkCC9Fm0JpgLvnjANBgkqhkiG9w0BAQEFAASBgCxtaztoTl0mFZ6l6yIa
+# o4twWF9dSMx6gs6UXTikpSdAI12S3QhXz97TMTyXpSurcgcmB4QbN1+jUAI+e402
+# sTVIirgLZEYLowwal5WvlR7IMLh5Jxr15DDImWsoLMpLoKDHBArBCX4Pn6+gTIVq
+# qxxJwcMnIcbK90u7rZLxRWRb
 # SIG # End signature block
