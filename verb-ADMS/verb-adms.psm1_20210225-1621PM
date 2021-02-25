@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.26.0
+  Version     : 1.0.25.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -73,90 +73,6 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 #*======v FUNCTIONS v======
 
 
-
-#*------v get-ADForestDrives.ps1 v------
-function get-ADForestDrives {
-    <#
-    .SYNOPSIS
-    get-ADForestDrives() - Get PSDrive PSProvider:ActiveDirectoryobjects currently mounted (for cross-domain ADMS work - ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will list solely those drives. Otherwise get-psDrive's all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module). Returns matching objects.
-    .NOTES
-    Version     : 1.0.1
-    Author      : Todd Kadrie
-    Website     :	http://www.toddomation.com
-    Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 2020-10-23
-    FileName    : get-ADForestDrives
-    License     : MIT License
-    Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka/verb-adms
-    Tags        : Powershell,ActiveDirectory,CrossForest
-    AddedCredit : Raimund (fr social.technet.microsoft.com comment)
-    AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
-    AddedTwitter:
-    REVISIONS
-    # 1:05 PM 2/25/2021 init 
-    .DESCRIPTION
-    get-ADForestDrives() - Get PSDrive PSProvider:ActiveDirectoryobjects currently mounted (for cross-domain ADMS work - ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove list solely those drives. Otherwise get-psDrive's all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module). Returns matching objects.
-    .OUTPUT
-    System.Object[]
-    Returns System.Object[] to pipeline, summarizing the Name and credential of PSDrives configured
-    .EXAMPLE
-    $result = get-ADForestDrives ;
-    Simple example
-    .EXAMPLE
-    if([boolean](get-ADForestDrives)){"XO adms ready"} else { ""XO adms NOT ready"}
-    Example if/then
-    .LINK
-    https://github.com/tostka/verb-adms
-    #>
-    #Requires -Version 3
-    #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
-    [CmdletBinding()]
-    PARAM(
-        [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
-        [switch] $whatIf
-    ) ;
-    BEGIN {
-        $Verbose = ($VerbosePreference -eq 'Continue') ;
-        #$rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:
-    }
-    PROCESS {
-        $error.clear() ;
-        if($global:ADPsDriveNames){
-            write-verbose "(Leveraging existing `$global:ADPsDriveNames variable found PSDrives`n$(($global:ADPsDriveName|out-string).trim())" ;  
-            $tPsD = $global:ADPsDriveNames ; 
-            $tPsD | %{
-                $retHash = @{
-                    Name     = $_.Name ;
-                    UserName = $_.UserName ; 
-                    Status   = [boolean](test-path -path "$($_.Name):") ; # test actual access
-                } ; 
-                New-Object PSObject -Property $retHash | write-output ;
-            } 
-        } else {
-            write-verbose "(Reporting on all PSProvider:ActiveDirectory PsDrives, *other* than any existing 'AD'-named drive)" ; 
-            $tPsD = Get-PSDrive -PSProvider ActiveDirectory|?{$_.name -ne 'AD'} ; 
-        }  ; 
-        TRY {
-            $tPsD | %{
-                $retHash = @{
-                    Name     = $_.Name ;
-                    UserName = $null # can't discover orig mapping uname fr existing psdrive object;
-                    Status   = [boolean](test-path -path "$($_.Name):") ; # test actual access
-                } ; 
-                New-Object PSObject -Property $retHash | write-output ;
-            } ; 
-        } CATCH {
-            Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
-            #BREAK ; #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ;
-            $false | write-output ;
-        } ;
-    } # PROC-E
-    END {} ;
-}
-
-#*------^ get-ADForestDrives.ps1 ^------
 
 #*------v Get-AdminInitials.ps1 v------
 function Get-AdminInitials {
@@ -1316,14 +1232,14 @@ Function Validate-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,unmount-ADForestDrives,Validate-Password -Alias *
+Export-ModuleMember -Function Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,unmount-ADForestDrives,Validate-Password -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU1MPKUXzi1j2Sg5o9JSvKafvj
-# Yo2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQsDGE8Z5os26I/ktdgF3M6WJ
+# CyqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1338,9 +1254,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRbRPOq
-# Sx0iq5l+fmIohZaFYccEMjANBgkqhkiG9w0BAQEFAASBgIqi0ludWTHZrMa0afby
-# n6CerLbNMajlwfUxlm0/GKm7K8ql9prEZDwoTA/Z/axHx7mGLQ+J9MSEqPx4Hb6w
-# ukCEiDi8IChS4y5i7Er31757Y0szJeoqwosoa2jjeLx0IHt2ysdK34zztPP2PpcT
-# DuogO2zqJWxpVj7rDx+OHCOT
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTq8Vso
+# LAOJtV+kkCC9Fm0JpgLvnjANBgkqhkiG9w0BAQEFAASBgCxtaztoTl0mFZ6l6yIa
+# o4twWF9dSMx6gs6UXTikpSdAI12S3QhXz97TMTyXpSurcgcmB4QbN1+jUAI+e402
+# sTVIirgLZEYLowwal5WvlR7IMLh5Jxr15DDImWsoLMpLoKDHBArBCX4Pn6+gTIVq
+# qxxJwcMnIcbK90u7rZLxRWRb
 # SIG # End signature block
