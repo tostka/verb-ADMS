@@ -17,6 +17,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 9:55 AM 3/17/2021 switched forest lookup to get-adforest (ActiveDirectory module) - native above ignores adpsdrive context (always pulls TOR)
     * 10/23/2020 2:18 PM init
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
     .DESCRIPTION
@@ -171,8 +172,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
             $error.clear() ;
             TRY {
                 set-location -Path $tPsd -ea STOP ;
-                $objForest = [System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest() ;
-                $doms = @($objForest.Domains | Select-Object Name).name ; 
+                $objForest = get-adforest ; # ad mod get-adforest vers ;
+                $doms = @($objForest.Domains) ; # ad mod get-adforest vers ; 
             
                 if($subdomain -AND ($doms -contains $subdomain) ){
                     write-verbose "(using specified -subdomain $($subdomain))" ; 

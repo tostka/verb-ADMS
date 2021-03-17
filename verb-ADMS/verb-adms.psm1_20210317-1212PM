@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.27.0
+  Version     : 1.0.26.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -414,7 +414,6 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
-    * 9:55 AM 3/17/2021 switched forest lookup to get-adforest (ActiveDirectory module) - native above ignores adpsdrive context (always pulls TOR)
     * 10/23/2020 2:18 PM init
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
     .DESCRIPTION
@@ -569,8 +568,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
             $error.clear() ;
             TRY {
                 set-location -Path $tPsd -ea STOP ;
-                $objForest = get-adforest ; # ad mod get-adforest vers ;
-                $doms = @($objForest.Domains) ; # ad mod get-adforest vers ; 
+                $objForest = [System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest() ;
+                $doms = @($objForest.Domains | Select-Object Name).name ; 
             
                 if($subdomain -AND ($doms -contains $subdomain) ){
                     write-verbose "(using specified -subdomain $($subdomain))" ; 
@@ -1323,8 +1322,8 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUY0lgIdLE7Q454iIu9AtqBsiQ
-# PVKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU1MPKUXzi1j2Sg5o9JSvKafvj
+# Yo2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1339,9 +1338,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQUiSAC
-# jI12z6yW5/llmWQ2j6CUljANBgkqhkiG9w0BAQEFAASBgByy90K/RTfwvNSfWDmv
-# w2HgNraULWFeVyUry1gJp6HsMK1aauZ1hq5GSyLnok1OVqJK8lGBsvre9MwU7nI5
-# 7JjfqYY/WeewEIvcaV9hMAj1mm6ifVBEzOrR5tqLwqQ79WzQUoTeLBi8hsEt76pJ
-# cCkZgzLXDyKj7E5eTXrr8k+W
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRbRPOq
+# Sx0iq5l+fmIohZaFYccEMjANBgkqhkiG9w0BAQEFAASBgIqi0ludWTHZrMa0afby
+# n6CerLbNMajlwfUxlm0/GKm7K8ql9prEZDwoTA/Z/axHx7mGLQ+J9MSEqPx4Hb6w
+# ukCEiDi8IChS4y5i7Er31757Y0szJeoqwosoa2jjeLx0IHt2ysdK34zztPP2PpcT
+# DuogO2zqJWxpVj7rDx+OHCOT
 # SIG # End signature block
