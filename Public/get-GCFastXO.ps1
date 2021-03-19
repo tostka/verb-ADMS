@@ -1,4 +1,4 @@
-﻿#*------v Function get-GCFastXO v------
+﻿#*------v get-GCFastXO.ps1 v------
 Function get-GCFastXO {
     <#
     .SYNOPSIS
@@ -162,7 +162,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     # cross-org ADMS requires switching to the proper forest drive (and use of -server xxx.xxx.com to access subdomains o the forest)
     $pdir = get-location ;
     $rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:,
-    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@â€]+$' ; 
+    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@”]+$' ; 
     # "^[-A-Za-z0-9]{2,20}$" ; # 2-20chars, alphanum plus dash
     $rgxemailaddr = "^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,6}$" ; 
     $rgxDistName = "^((CN=([^,]*)),)?((((?:CN|OU)=[^,]+,?)+),)?((DC=[^,]+,?)+)$" ; 
@@ -266,4 +266,6 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     } # loop-E
     $PotentialDCs | Get-Random | Write-Output
 
-} #*------^ END Function get-GCFastXO ^------
+}
+
+#*------^ get-GCFastXO.ps1 ^------
