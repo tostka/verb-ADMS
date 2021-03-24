@@ -17,6 +17,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 3:32 PM 3/24/2021 added if/then use of Site on discovery ; implemented multi-domain forestwide GC search - but watchout using anything but eml/UPN - overlapping samaccountname used in mult domains will fail to return single hit; added sanity-checking of forest to context. tossed out adreplicationsite, wasn't returning dcs
     * 9:55 AM 3/17/2021 switched forest lookup to get-adforest (ActiveDirectory module) - native above ignores adpsdrive context (always pulls TOR)
     * 10/23/2020 2:18 PM init
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
@@ -111,13 +112,13 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
       } elseif (test-path $tModFile) {
         write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;
         try {import-module -name $tModDFile -force -DisableNameChecking}
-        catch {   write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;   $tModFile = "$($tModName).ps1" ;   $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;   if (Test-Path $sLoad) {       Write-Verbose -verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;       . $sLoad ;       if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };   } else {       $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;       if (Test-Path $sLoad) {           Write-Verbose -verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;           . $sLoad ;           if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };       } else {           Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;           exit;       } ;   } ; } ; 
+        catch {   write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;   $tModFile = "$($tModName).ps1" ;   $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;   if (Test-Path $sLoad) {       Write-Verbose -verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;       . $sLoad ;       if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };   } else {       $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;       if (Test-Path $sLoad) {           Write-Verbose -verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;           . $sLoad ;           if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };       } else {           Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;           Break;       } ;   } ; } ; 
       } ;
       if(!(test-path function:$tModCmdlet)){
           write-warning -verbose:$true  "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;
           $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;
           if (Test-Path $sLoad) {     Write-Verbose -verbose:$true ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;     . $sLoad ;     if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };     if(!(test-path function:$tModCmdlet)){         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;     } else {          write-verbose -verbose:$true  "(confirmed $tModName loaded: $tModCmdlet present)"     }  
-          } else {     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;     exit; } ; 
+          } else {     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;     Break; } ; 
       } else {     write-verbose -verbose:$true  "(confirmed $tModName loaded: $tModCmdlet present)" } ; 
 
     } ;  # loop-E
@@ -144,7 +145,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             throw "Unable to resolve $($tenorg) `$prefCred value!`nEXIT!"
-            exit ; 
+            Break ; 
         } ;
     } ; 
     #>
@@ -162,7 +163,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     # cross-org ADMS requires switching to the proper forest drive (and use of -server xxx.xxx.com to access subdomains o the forest)
     $pdir = get-location ;
     $rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:,
-    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@”]+$' ; 
+    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@�]+$' ; 
     # "^[-A-Za-z0-9]{2,20}$" ; # 2-20chars, alphanum plus dash
     $rgxemailaddr = "^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,6}$" ; 
     $rgxDistName = "^((CN=([^,]*)),)?((((?:CN|OU)=[^,]+,?)+),)?((DC=[^,]+,?)+)$" ; 
@@ -172,18 +173,64 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
             $error.clear() ;
             TRY {
                 set-location -Path $tPsd -ea STOP ;
-                $objForest = get-adforest ; # ad mod get-adforest vers ;
+                # even with psdrive context, keeps flipping forest, FORCE IT
+                #$objForest = get-adforest ; # ad mod get-adforest vers ;
+                $objForest = get-adforest -Identity (Get-Variable  -name "$($TenOrg)Meta").value.ADForestName -verbose:$($verbose) ; 
                 $doms = @($objForest.Domains) ; # ad mod get-adforest vers ; 
-            
                 if($subdomain -AND ($doms -contains $subdomain) ){
                     write-verbose "(using specified -subdomain $($subdomain))" ; 
                     $tdom = $subdomain ; 
                 } elseif($ADObject) { 
-                    write-verbose "(Resolving ADObject:$($ADObject) to determine target subdomain in AD forest)" ; 
-                    $tdom = $null ; 
+                    <# prior looping subdomains search
+                    $objForest = get-adforest ; # ad mod get-adforest vers ;
+                    $doms = @($objForest.Domains) ; # ad mod get-adforest vers ; 
+                    if($subdomain -AND ($doms -contains $subdomain) ){
+                        write-verbose "(using specified -subdomain $($subdomain))" ; 
+                        $tdom = $subdomain ; 
+                    } elseif($ADObject) { 
+                        write-verbose "(Resolving ADObject:$($ADObject) to determine target subdomain in AD forest)" ; 
+                        $tdom = $null ; 
+                        switch -regex ($ADObject){
+                            $rgxSamAcctName {
+                                $fltr = "SamAccountName -eq '$($ADObject)'" ;
+                            } 
+                            $rgxemailaddr {
+                                $fltr = "UserPrincipalName -eq '$($ADObject)'" ;
+                            }
+                            $rgxDistName {
+                                $fltr = "DistinguishedName -eq '$($ADObject)'" ;
+                            } 
+                            default {
+                                $smsg = "FAILED TO MATCH -ADObject SPEC - $($ADObject) - TO EITHER A SAMACCOUNTNAME OR UPN FORMAT!" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+                                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                BREAK ; 
+                            }
+                        } ;
+                        foreach($dom in $doms){
+                            write-verbose "Get-ADObject server:$($dom)" ;
+                            if(Get-ADObject -filter $fltr  -Server $dom -ea 0){
+                                $tdom = $dom ;
+                                $smsg = "(matched $($ADObject) to forest subdomain:$($tdom))" ; 
+                                if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                break ;
+                            } ;
+                        } ;
+                    }; 
+                    #>
+                    # instead do a forest-wide GC search (contains a limited set of attribs of all objs in forest, but good for locating nested obj)
+                    $fltr = $null ; 
+                    $GcFwide = "$((Get-ADDomainController -domain $objForest.name -Discover -Service GlobalCatalog).hostname):3268" ;
+                    $pltGADO=[ordered]@{server=$GcFwide; Properties='*'; ErrorAction='Stop' ;} ; 
                     switch -regex ($ADObject){
                         $rgxSamAcctName {
+                            $bSamacctname ; 
                             $fltr = "SamAccountName -eq '$($ADObject)'" ;
+                            # could use -identity, but it fails on multiple matches
+                            $smsg = "SAMACCOUNT NAME SPECIFIED: WARNING:can return *mult* objects searching non-forest-uniques like samaccountnames!" ; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                         } 
                         $rgxemailaddr {
                             $fltr = "UserPrincipalName -eq '$($ADObject)'" ;
@@ -197,41 +244,83 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
                             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                             BREAK ; 
                         }
-                    }
-                    foreach($dom in $doms){
-                        write-verbose "Get-ADObject server:$($dom)" ;
-                        if(Get-ADObject -filter $fltr  -Server $dom -ea 0){
-                            $tdom = $dom ;
-                            $smsg = "(matched $($ADObject) to forest subdomain:$($tdom))" ; 
-                            if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                            break ;
-                        } ;
                     } ;
+                    if($fltr){
+                        $pltGADO.add('filter',$fltr) ; 
+                    } ; 
+                    $smsg = "Get-ADObject w`n$(($pltGADO|out-string).trim())"
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    if($adObj = Get-ADObject @pltGADO){
+                        # can return *mult* objects searching non-forest-uniques like samaccountnames!
+                        if($bSamacctname){
+                            if($adObj -is [system.array]){
+                                $smsg = "FAILED TO MATCH *SINGLE* -ADObject SPEC (MULT RETURNS)- $($ADObject) - SWITCH UPN OR DN -ADOBJECT FORMAT!" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+                                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                BREAK ; 
+                            } ; 
+                        } else { 
+                    
+                        } ; 
+                        <# varis whether 3 or 4, need to walk 
+                        if($adObj.distinguishedname.split(',')[-3] -match 'OU=.*'){
+                            # root dom 
+                            $tdom = (get-adforest).name ;
+                        } else { 
+                            $tdom = $adObj.distinguishedname.split(',')[-3..-1].replace('DC=','') -join '.' ;
+                        } ; 
+                        <#
+                        $smsg = "($($ADObject) is homed in $($tdom) domain" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        # Get-ADDomainController technically returns  an ARRAY, force the first element, regardless, to ensure a system.string is output
+                        $sgc = (Get-ADDomainController -domainname $tdom -discover).hostname[0] ;
+                        $smsg = "returning GC:$($sgc))" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        #>
+
+                        $tdom = ($adObj.distinguishedname.split(',')|?{$_ -match 'DC=.*'}).replace('DC=','') -join '.' ; 
+
+
+                    } else {
+                        write-warning "$((get-date).ToString('HH:mm:ss')):Unable to resolve specified identifier" ;
+                        $smsg = "Unable to resolve specified identifier" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        BREAK ; 
+                    
+                    } ;
+
                 } else { 
-                    $smsg = "UNABLE TO RESOLVE A TARGET SUBDOMAIN!" ; 
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            BREAK ; 
-                } ;
+                    write-warning "$((get-date).ToString('HH:mm:ss')):NEITHER -SUBDOMAIN OR -ADOBJECT SPECIFIED!" ;
+                    $smsg = "Unable to resolve specified identifier" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    BREAK ; 
+                } ; 
+
             } CATCH {
                 $smsg = "Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
                 else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 set-location $pdir ; # restore dir
-                Exit #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
             } ;
+        
         } else {
-            $smsg = "UNABLE TO FIND *MOUNTED* AD PSDRIVE $($Tpsd) FROM `$$($TENorg)Meta!" ;
+            $smsg = "UNABLE TO RESOLVE PROPER AD PSDRIVE FROM `$$($TENorg)Meta!" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            Exit #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+            Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
         } ;
+    
     } else {
-        $smsg = "UNABLE TO RESOLVE PROPER AD PSDRIVE FROM `$$($TENorg)Meta!" ;
+        $smsg = "UNABLE TO RESOLVE AD PSDRIVE NAME FROM `$$($TENorg)Meta.value.ADForestName!" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        Exit #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+        Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
     } ;
     
     if($tdom){
@@ -242,8 +331,28 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
         $smsg = "Get-ADDomainController w`n$(($pltGAdDc|out-string).trim())" ;
         if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-        $domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$((get-adreplicationsite).name)"} @pltGAdDc ).name
-        
+        $contextSite = (get-adreplicationsite).name
+        if(($objForest | select -expand sites) -contains $contextsite){
+            #$domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$((get-adreplicationsite).name)"} @pltGAdDc ).name
+            if($domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$($contextSite)"} @pltGAdDc ).name){
+                # used site
+                $smsg = "(Site-specific DCs ($(($domaincontrollers|measure).count)): Get-ADDomainController -Filter {isGlobalCatalog -eq `$true -AND Site -eq $($contextSite)})" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } else {
+                # siteless
+                $domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true } @pltGAdDc ).name
+                $smsg = "(Failed through to Siteless DCs ($(($domaincontrollers|measure).count)): Get-ADDomainController -Filter {isGlobalCatalog -eq `$true})" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ; 
+
+        } else { 
+            $smsg = "MISMATCH BETWEEN `$contextSite:$($contextSite) and `$objForest!:$($objForest.Name)!" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+        } ; 
     } else { 
         $smsg = "FAILED TO RESOLVE A USABLE SUBDOMAIN SPEC FOR THE USER!" ; 
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 

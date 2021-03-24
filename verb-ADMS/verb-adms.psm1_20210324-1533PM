@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.30.0
+  Version     : 1.0.29.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -414,7 +414,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
-    * 3:32 PM 3/24/2021 added if/then use of Site on discovery ; implemented multi-domain forestwide GC search - but watchout using anything but eml/UPN - overlapping samaccountname used in mult domains will fail to return single hit; added sanity-checking of forest to context. tossed out adreplicationsite, wasn't returning dcs
+    * 2:19 PM 3/24/2021 implemented multi-domain forestwide GC search - but watchout using anything but eml/UPN - overlapping samaccountname used in mult domains will fail to return single hit; added sanity-checking of forest to context. tossed out adreplicationsite, wasn't returning dcs
     * 9:55 AM 3/17/2021 switched forest lookup to get-adforest (ActiveDirectory module) - native above ignores adpsdrive context (always pulls TOR)
     * 10/23/2020 2:18 PM init
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
@@ -560,7 +560,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     # cross-org ADMS requires switching to the proper forest drive (and use of -server xxx.xxx.com to access subdomains o the forest)
     $pdir = get-location ;
     $rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:,
-    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@?]+$' ; 
+    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@�]+$' ; 
     # "^[-A-Za-z0-9]{2,20}$" ; # 2-20chars, alphanum plus dash
     $rgxemailaddr = "^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,6}$" ; 
     $rgxDistName = "^((CN=([^,]*)),)?((((?:CN|OU)=[^,]+,?)+),)?((DC=[^,]+,?)+)$" ; 
@@ -731,18 +731,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
         $contextSite = (get-adreplicationsite).name
         if(($objForest | select -expand sites) -contains $contextsite){
             #$domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$((get-adreplicationsite).name)"} @pltGAdDc ).name
-            if($domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$($contextSite)"} @pltGAdDc ).name){
-                # used site
-                $smsg = "(Site-specific DCs ($(($domaincontrollers|measure).count)): Get-ADDomainController -Filter {isGlobalCatalog -eq `$true -AND Site -eq $($contextSite)})" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } else {
-                # siteless
-                $domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true } @pltGAdDc ).name
-                $smsg = "(Failed through to Siteless DCs ($(($domaincontrollers|measure).count)): Get-ADDomainController -Filter {isGlobalCatalog -eq `$true})" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ; 
+            #$domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$($contextSite)"} @pltGAdDc ).name
+            $domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true } @pltGAdDc ).name
 
         } else { 
             $smsg = "MISMATCH BETWEEN `$contextSite:$($contextSite) and `$objForest!:$($objForest.Name)!" ;
@@ -1443,8 +1433,8 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU7AuGp4Y+ha3yGYoQjLhadys6
-# 8b2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUFvc5prQZGMU6nn1U2mnIcdQD
+# IzmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1459,9 +1449,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRD0gV3
-# T4E4FWvla7evKTE+ifI41jANBgkqhkiG9w0BAQEFAASBgLE9IgzD5SWfvbpD+zkC
-# 4v3LBmL511wMJi39ThYikViwVk91wHuwmRCh8gqmoOT6YaY6K43t9wbRACRhjbkN
-# eMV0bYJ4XdDPskRPEe8J/2y/PPs+fRR9lsWWTyVb/BC5ckRZfjiyZJZVCX/DZzjP
-# GQbJRTu5QHQExKV9+ieQWtvX
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTL6yK5
+# cilJ/LFHIdfJdnWHs8RdITANBgkqhkiG9w0BAQEFAASBgARjmzC1ujybYcT/+aWN
+# ngulkUCTXQ2mBF0982lzomZy2hkSsBOMa7sob6Dow/+7t/SxtvyylzL4PM2s/SAR
+# 7WESZwxuHrYIQpWfrpCIl9YslO51rnF9Q8MjV25bny884p1cZgoMMAyhfea9jpV+
+# wroajL+aIzaFX0AzBCxNPV45
 # SIG # End signature block
