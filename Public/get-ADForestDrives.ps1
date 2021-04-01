@@ -78,5 +78,6 @@ function get-ADForestDrives {
         } ;
     } # PROC-E
     END {} ;
-} ; 
+}
+
 #*------^ get-ADForestDrives.ps1 ^------

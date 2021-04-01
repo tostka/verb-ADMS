@@ -1,4 +1,4 @@
-#*------v unmount-ADForestDrives.ps1 v------
+#*------v umount-ADForestDrives.ps1 v------
 function unmount-ADForestDrives {
     <#
     .SYNOPSIS
@@ -84,6 +84,6 @@ function unmount-ADForestDrives {
         } ;
     } # PROC-E
     END {} ;
-} ; 
+}
 
-#*------^ unmount-ADForestDrives.ps1 ^------
+#*------^ umount-ADForestDrives.ps1 ^------

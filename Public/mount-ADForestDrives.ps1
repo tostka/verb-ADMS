@@ -282,6 +282,6 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
         } ; # loop-E
     } # PROC-E
     END {} ;
-} ; 
+}
 
 #*------^ mount-ADForestDrives.ps1 ^------

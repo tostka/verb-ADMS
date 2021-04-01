@@ -17,6 +17,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 3:37 PM 4/1/2021 fixed enhcodeing char damage in $rgxSamAcctName, fixed type-conv error (EXch) for returns from get-addomaincontroller ; 
     * 3:32 PM 3/24/2021 added if/then use of Site on discovery ; implemented multi-domain forestwide GC search - but watchout using anything but eml/UPN - overlapping samaccountname used in mult domains will fail to return single hit; added sanity-checking of forest to context. tossed out adreplicationsite, wasn't returning dcs
     * 9:55 AM 3/17/2021 switched forest lookup to get-adforest (ActiveDirectory module) - native above ignores adpsdrive context (always pulls TOR)
     * 10/23/2020 2:18 PM init
@@ -162,8 +163,9 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     
     # cross-org ADMS requires switching to the proper forest drive (and use of -server xxx.xxx.com to access subdomains o the forest)
     $pdir = get-location ;
+    #push-location ; 
     $rgxDriveBanChars = '[;~/\\\.:]' ; # ;~/\.:,
-    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@�]+$' ; 
+    $rgxSamAcctName = '^[^\/\\\[\]:;|=,+?<>@?]+$' ; 
     # "^[-A-Za-z0-9]{2,20}$" ; # 2-20chars, alphanum plus dash
     $rgxemailaddr = "^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,6}$" ; 
     $rgxDistName = "^((CN=([^,]*)),)?((((?:CN|OU)=[^,]+,?)+),)?((DC=[^,]+,?)+)$" ; 
@@ -334,14 +336,16 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
         $contextSite = (get-adreplicationsite).name
         if(($objForest | select -expand sites) -contains $contextsite){
             #$domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$((get-adreplicationsite).name)"} @pltGAdDc ).name
-            if($domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$($contextSite)"} @pltGAdDc ).name){
+            #if($domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$($contextSite)"} @pltGAdDc ).name){
+            if($domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true -AND Site -eq "$($contextSite)"} @pltGAdDc | select -expand hostname)){
                 # used site
                 $smsg = "(Site-specific DCs ($(($domaincontrollers|measure).count)): Get-ADDomainController -Filter {isGlobalCatalog -eq `$true -AND Site -eq $($contextSite)})" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             } else {
                 # siteless
-                $domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true } @pltGAdDc ).name
+                #$domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true } @pltGAdDc ).name
+                $domainControllers = (Get-ADDomainController -Filter {isGlobalCatalog -eq $true } @pltGAdDc | select -expand hostname) ;
                 $smsg = "(Failed through to Siteless DCs ($(($domaincontrollers|measure).count)): Get-ADDomainController -Filter {isGlobalCatalog -eq `$true})" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -360,6 +364,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
         BREAK ; 
     }
     set-location $pdir ;
+    #pop-location ;
     
     $PotentialDCs = @()
     ForEach ($LocalDC in $domainControllers ) {
@@ -373,8 +378,10 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
             $Null = $TCPClient.Close()
         } # if-E
     } # loop-E
-    $PotentialDCs | Get-Random | Write-Output
-
+    # aftershifting to get-addomaincontroller (which outputs an array obj), ending up with some type of 2-element return, fails with ex10 cmdlets as -domaincontroller, need to coerce it into a single populated string item
+    [string]$finalDC = $PotentialDCs | Get-Random  ;
+    #$PotentialDCs | Get-Random | Write-Output
+    $finalDC| Write-Output ; 
 }
 
 #*------^ get-GCFastXO.ps1 ^------
