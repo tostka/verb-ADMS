@@ -1,4 +1,4 @@
-# verb-adms.psm1
+﻿# verb-adms.psm1
 
 
   <#
@@ -414,7 +414,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
-    * 11:18 AM 4/5/2021 retooled again, not passing to pipeline ;  added ForestWide param, to return a root forest dom gc with the appended 3268 port
+    * 10:41 AM 4/5/2021 added ForestWide param, to return a root forest dom gc with the appended 3268 port
     * 3:37 PM 4/1/2021 fixed enhcodeing char damage in $rgxSamAcctName, fixed type-conv error (EXch) for returns from get-addomaincontroller ; 
     * 3:32 PM 3/24/2021 added if/then use of Site on discovery ; implemented multi-domain forestwide GC search - but watchout using anything but eml/UPN - overlapping samaccountname used in mult domains will fail to return single hit; added sanity-checking of forest to context. tossed out adreplicationsite, wasn't returning dcs
     * 9:55 AM 3/17/2021 switched forest lookup to get-adforest (ActiveDirectory module) - native above ignores adpsdrive context (always pulls TOR)
@@ -769,7 +769,9 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
         $smsg = "(-ForestWide specified: returning a root domain $($objForest.name) gc, with explicit forest-wide port 3268)" ; 
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        [string]$finalDC = $GcFwide ; 
+        $GcFwide | Write-Output ; 
+        set-location $pdir ;
+        break ; 
     } else { 
         $smsg = "FAILED TO RESOLVE A USABLE SUBDOMAIN SPEC FOR THE USER!" ; 
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
@@ -779,25 +781,21 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     set-location $pdir ;
     #pop-location ;
     
-    if($ForestWide -AND $GcFwide) { 
-        # single gc, no test
-    } else { 
-        $PotentialDCs = @()
-        ForEach ($LocalDC in $domainControllers ) {
-            $TCPClient = New-Object System.Net.Sockets.TCPClient
-            # Try connecting to port 389 on the DC
-            $Connect = $TCPClient.BeginConnect($LocalDC, 389, $null, $null)
-            # Wait 100ms ($MaxLatency) for the connection
-            $Wait = $Connect.AsyncWaitHandle.WaitOne($MaxLatency, $False)
-            If ($TCPClient.Connected) {
-                $PotentialDCs += $LocalDC
-                $Null = $TCPClient.Close()
-            } # if-E
-        } # loop-E
-        # after shifting to get-addomaincontroller (which outputs an array obj), ending up with some type of 2-element return, fails with ex10 cmdlets as -domaincontroller, need to coerce it into a single populated string item
-        [string]$finalDC = $PotentialDCs | Get-Random  ;
-        #$PotentialDCs | Get-Random | Write-Output
-    } ; 
+    $PotentialDCs = @()
+    ForEach ($LocalDC in $domainControllers ) {
+        $TCPClient = New-Object System.Net.Sockets.TCPClient
+        # Try connecting to port 389 on the DC
+        $Connect = $TCPClient.BeginConnect($LocalDC, 389, $null, $null)
+        # Wait 100ms ($MaxLatency) for the connection
+        $Wait = $Connect.AsyncWaitHandle.WaitOne($MaxLatency, $False)
+        If ($TCPClient.Connected) {
+            $PotentialDCs += $LocalDC
+            $Null = $TCPClient.Close()
+        } # if-E
+    } # loop-E
+    # aftershifting to get-addomaincontroller (which outputs an array obj), ending up with some type of 2-element return, fails with ex10 cmdlets as -domaincontroller, need to coerce it into a single populated string item
+    [string]$finalDC = $PotentialDCs | Get-Random  ;
+    #$PotentialDCs | Get-Random | Write-Output
     $finalDC| Write-Output ; 
 }
 
@@ -1466,3 +1464,29 @@ Function Validate-Password{
 
 Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,unmount-ADForestDrives,Validate-Password -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUYsJeI9wXY4ImzLr38QC0on4l
+# a1egggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSREPCx
+# EaRfLOIIsoeFGxMgrD+zczANBgkqhkiG9w0BAQEFAASBgJgLZ3WXoRuSeh2pz9Y2
+# 31GcGaffXQAI6EnM1s6Tv2wHWnLGkd8nSKzUjUNNkUxmFtmp6pKuJKuq24UaGl2z
+# +GfzZ2x9SBdIx7/HtdTCB+uM4ngtO/CMPjKr2qJlkyN2RDBVI9qVxPPkPhmwIV4o
+# VQj8Rd7hwytxJuvO4Zqv0S0i
+# SIG # End signature block

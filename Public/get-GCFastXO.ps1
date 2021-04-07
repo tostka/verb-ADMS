@@ -17,6 +17,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 11:18 AM 4/5/2021 retooled again, not passing to pipeline ;  added ForestWide param, to return a root forest dom gc with the appended 3268 port
     * 3:37 PM 4/1/2021 fixed enhcodeing char damage in $rgxSamAcctName, fixed type-conv error (EXch) for returns from get-addomaincontroller ; 
     * 3:32 PM 3/24/2021 added if/then use of Site on discovery ; implemented multi-domain forestwide GC search - but watchout using anything but eml/UPN - overlapping samaccountname used in mult domains will fail to return single hit; added sanity-checking of forest to context. tossed out adreplicationsite, wasn't returning dcs
     * 9:55 AM 3/17/2021 switched forest lookup to get-adforest (ActiveDirectory module) - native above ignores adpsdrive context (always pulls TOR)
@@ -26,6 +27,8 @@ Function get-GCFastXO {
     get-GCFastXO - Cross-Org function to locate a random DC in the local AD site (sub-100ms response)
     .PARAMETER ADObject 
     ADObject identifier (SamAccountName|UserPrincipalName| DistinguishedName), to be used to determine necessary subdomain
+    .PARAMETER ForestWide
+    Switch to return a Forest Wide GC (a root dom gc specifying port 3268)[-ForestWide]
     .PARAMETER Credential
     Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
     .PARAMETER MaxLatency
@@ -47,6 +50,10 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     .EXAMPLE
     $dc = get-GCFastXO -TenOrg TOR -ADObject 'OU=ORGUNIT,OU=ORGUNIT,OU=SITE,DC=SUBDOMAIN,DC=ad,DC=DOMAIN,DC=com'
     Obtain a cross-Org gc, resolving the target subdomain in the specified forest, by locating and resolving a specified ADObject (an OU account, by querying on it's DN)
+    .EXAMPLE
+    $gcw = get-GCFastXO -TenOrg cmw -ForestWide -showDebug -Verbose ; 
+    get-aduser -id someuser -server $gcw ; 
+    Obtain a ForestWide root domain gc (which includes the necessary hard-coded port '3268') and can then can be queried for an object in *any subdomain* in the forest, though it has a small subset of all ADObject properties). Handy for locating the hosting subdomain, and suitable dc, so that the full ADObject can be queried targeting a suitable subdomain dc.
     .LINK
     https://github.com/tostka/verb-ADMS
     #>
@@ -59,6 +66,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
         [string]$ADObject,
         [Parameter(ParameterSetName='Static',Position=0,Mandatory=$False,HelpMessage="Forest subdomain for which gc should be returned[-subdomain]")]
         [string]$Subdomain,
+        [Parameter(ParameterSetName='Forest',Position=0,Mandatory=$False,HelpMessage="Switch to return a Forest Wide GC (a root dom gc specifying port 3268)[-ForestWide]")]
+        [switch]$ForestWide,
         [Parameter(HelpMessage="Credential to use for cloud actions [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
         $Credential,
         [Parameter(ParameterSetName='Static',Position=0,Mandatory=$False,HelpMessage="Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]")]
@@ -295,6 +304,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
                     
                     } ;
 
+                } elseif($ForestWide){
+                    $GcFwide = "$((Get-ADDomainController -domain $objForest.name -Discover -Service GlobalCatalog).hostname):3268" 
                 } else { 
                     write-warning "$((get-date).ToString('HH:mm:ss')):NEITHER -SUBDOMAIN OR -ADOBJECT SPECIFIED!" ;
                     $smsg = "Unable to resolve specified identifier" ;
@@ -357,6 +368,11 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
         } ; 
+    } elseif($ForestWide -AND $GcFwide) {  
+        $smsg = "(-ForestWide specified: returning a root domain $($objForest.name) gc, with explicit forest-wide port 3268)" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        [string]$finalDC = $GcFwide ; 
     } else { 
         $smsg = "FAILED TO RESOLVE A USABLE SUBDOMAIN SPEC FOR THE USER!" ; 
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
@@ -366,22 +382,25 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     set-location $pdir ;
     #pop-location ;
     
-    $PotentialDCs = @()
-    ForEach ($LocalDC in $domainControllers ) {
-        $TCPClient = New-Object System.Net.Sockets.TCPClient
-        # Try connecting to port 389 on the DC
-        $Connect = $TCPClient.BeginConnect($LocalDC, 389, $null, $null)
-        # Wait 100ms ($MaxLatency) for the connection
-        $Wait = $Connect.AsyncWaitHandle.WaitOne($MaxLatency, $False)
-        If ($TCPClient.Connected) {
-            $PotentialDCs += $LocalDC
-            $Null = $TCPClient.Close()
-        } # if-E
-    } # loop-E
-    # aftershifting to get-addomaincontroller (which outputs an array obj), ending up with some type of 2-element return, fails with ex10 cmdlets as -domaincontroller, need to coerce it into a single populated string item
-    [string]$finalDC = $PotentialDCs | Get-Random  ;
-    #$PotentialDCs | Get-Random | Write-Output
+    if($ForestWide -AND $GcFwide) { 
+        # single gc, no test
+    } else { 
+        $PotentialDCs = @()
+        ForEach ($LocalDC in $domainControllers ) {
+            $TCPClient = New-Object System.Net.Sockets.TCPClient
+            # Try connecting to port 389 on the DC
+            $Connect = $TCPClient.BeginConnect($LocalDC, 389, $null, $null)
+            # Wait 100ms ($MaxLatency) for the connection
+            $Wait = $Connect.AsyncWaitHandle.WaitOne($MaxLatency, $False)
+            If ($TCPClient.Connected) {
+                $PotentialDCs += $LocalDC
+                $Null = $TCPClient.Close()
+            } # if-E
+        } # loop-E
+        # after shifting to get-addomaincontroller (which outputs an array obj), ending up with some type of 2-element return, fails with ex10 cmdlets as -domaincontroller, need to coerce it into a single populated string item
+        [string]$finalDC = $PotentialDCs | Get-Random  ;
+        #$PotentialDCs | Get-Random | Write-Output
+    } ; 
     $finalDC| Write-Output ; 
-}
-
+} ; 
 #*------^ get-GCFastXO.ps1 ^------
