@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.34.0
+  Version     : 1.0.33.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -414,7 +414,6 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
-    * 12:07 PM 5/4/2021 it's got a bug in the output: something prior to the last write-output is prestuffing an empty item into the pipeline. Result is an array of objects coming out for $domaincontroller. Workaround, till can locate the source, is to post-filter returns for length, in the call: $domaincontroller = get-GCFastXO -TenOrg $TenOrg -ADObject @($Rooms)[0] -verbose:$($verbose) |?{$_.length} ; added the workaround to the examples
     * 11:18 AM 4/5/2021 retooled again, not passing to pipeline ;  added ForestWide param, to return a root forest dom gc with the appended 3268 port
     * 3:37 PM 4/1/2021 fixed enhcodeing char damage in $rgxSamAcctName, fixed type-conv error (EXch) for returns from get-addomaincontroller ; 
     * 3:32 PM 3/24/2021 added if/then use of Site on discovery ; implemented multi-domain forestwide GC search - but watchout using anything but eml/UPN - overlapping samaccountname used in mult domains will fail to return single hit; added sanity-checking of forest to context. tossed out adreplicationsite, wasn't returning dcs
@@ -440,16 +439,16 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     .OUTPUTS
     Returns one DC object, .Name is name pointer
     .EXAMPLE
-    $dc = get-GCFastXO -TenOrg TOR -subdomain global.ad.toro.com |?{$_.length} ;
+    $dc = get-GCFastXO -TenOrg TOR -subdomain global.ad.toro.com
     Obtain a cross-Org gc using an explicit target subdomain in the specified forest
     .EXAMPLE
-    $dc = get-GCFastXO -TenOrg TOR -ADObject SomeSamaccountname |?{$_.length} ;
+    $dc = get-GCFastXO -TenOrg TOR -ADObject SomeSamaccountname
     Obtain a cross-Org gc, resolving the target subdomain in the specified forest, by locating and resolving a specified ADObject (a user account, by querying on it's samaccountname)
     .EXAMPLE
-    $dc = get-GCFastXO -TenOrg TOR -ADObject 'OU=ORGUNIT,OU=ORGUNIT,OU=SITE,DC=SUBDOMAIN,DC=ad,DC=DOMAIN,DC=com' |?{$_.length} ;
+    $dc = get-GCFastXO -TenOrg TOR -ADObject 'OU=ORGUNIT,OU=ORGUNIT,OU=SITE,DC=SUBDOMAIN,DC=ad,DC=DOMAIN,DC=com'
     Obtain a cross-Org gc, resolving the target subdomain in the specified forest, by locating and resolving a specified ADObject (an OU account, by querying on it's DN)
     .EXAMPLE
-    $gcw = get-GCFastXO -TenOrg cmw -ForestWide -showDebug -Verbose |?{$_.length} ; 
+    $gcw = get-GCFastXO -TenOrg cmw -ForestWide -showDebug -Verbose ; 
     get-aduser -id someuser -server $gcw ; 
     Obtain a ForestWide root domain gc (which includes the necessary hard-coded port '3268') and can then can be queried for an object in *any subdomain* in the forest, though it has a small subset of all ADObject properties). Handy for locating the hosting subdomain, and suitable dc, so that the full ADObject can be queried targeting a suitable subdomain dc.
     .LINK
@@ -1471,8 +1470,8 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU1q+SlymaL1XdfKQFu9aeX2Pn
-# rOugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUYshiLyC7QL9mTJz3UfyRC1JF
+# ZVCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1487,9 +1486,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSHMcV3
-# 4lX4YKE/Fs8Yat6UrsJLCjANBgkqhkiG9w0BAQEFAASBgA3ORFi+Dl9lFyrTMsL7
-# IDFOK3M2iR2JEgYIVXzC027kJkVnqPzsMn4VLeI4DlzsIDqVUraOOprKBOFGJTul
-# nm12JmeeVg3/sd5SyZ4hk7sBSNLC83RJTdAu+Xm/gC4XKjqKpPdCArZkFz/wulR3
-# 3vey0JTS1pB1Kv0gHm2BcESu
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTmf1Dn
+# 95A91X1SHlmg2quwf0HZRTANBgkqhkiG9w0BAQEFAASBgLfZnxELvWehZlDaNZkq
+# /jCpnFGNsN09Ay1J2baTJFheBsLnz3Bl5hBhRgnZE9iS575AoHzF3RBKhXRHru+1
+# bPtVTHZNNE7zZ+g09d5+X0yIZht0trDPRRh+wddnVZDldFzJXClMhW4eIwqKnKwf
+# 6VPuIF/PTBtdJvwDilaBpWOy
 # SIG # End signature block

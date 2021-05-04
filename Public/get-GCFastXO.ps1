@@ -17,6 +17,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 12:07 PM 5/4/2021 it's got a bug in the output: something prior to the last write-output is prestuffing an empty item into the pipeline. Result is an array of objects coming out for $domaincontroller. Workaround, till can locate the source, is to post-filter returns for length, in the call: $domaincontroller = get-GCFastXO -TenOrg $TenOrg -ADObject @($Rooms)[0] -verbose:$($verbose) |?{$_.length} ; added the workaround to the examples
     * 11:18 AM 4/5/2021 retooled again, not passing to pipeline ;  added ForestWide param, to return a root forest dom gc with the appended 3268 port
     * 3:37 PM 4/1/2021 fixed enhcodeing char damage in $rgxSamAcctName, fixed type-conv error (EXch) for returns from get-addomaincontroller ; 
     * 3:32 PM 3/24/2021 added if/then use of Site on discovery ; implemented multi-domain forestwide GC search - but watchout using anything but eml/UPN - overlapping samaccountname used in mult domains will fail to return single hit; added sanity-checking of forest to context. tossed out adreplicationsite, wasn't returning dcs
@@ -42,16 +43,16 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     .OUTPUTS
     Returns one DC object, .Name is name pointer
     .EXAMPLE
-    $dc = get-GCFastXO -TenOrg TOR -subdomain global.ad.toro.com
+    $dc = get-GCFastXO -TenOrg TOR -subdomain global.ad.toro.com |?{$_.length} ;
     Obtain a cross-Org gc using an explicit target subdomain in the specified forest
     .EXAMPLE
-    $dc = get-GCFastXO -TenOrg TOR -ADObject SomeSamaccountname
+    $dc = get-GCFastXO -TenOrg TOR -ADObject SomeSamaccountname |?{$_.length} ;
     Obtain a cross-Org gc, resolving the target subdomain in the specified forest, by locating and resolving a specified ADObject (a user account, by querying on it's samaccountname)
     .EXAMPLE
-    $dc = get-GCFastXO -TenOrg TOR -ADObject 'OU=ORGUNIT,OU=ORGUNIT,OU=SITE,DC=SUBDOMAIN,DC=ad,DC=DOMAIN,DC=com'
+    $dc = get-GCFastXO -TenOrg TOR -ADObject 'OU=ORGUNIT,OU=ORGUNIT,OU=SITE,DC=SUBDOMAIN,DC=ad,DC=DOMAIN,DC=com' |?{$_.length} ;
     Obtain a cross-Org gc, resolving the target subdomain in the specified forest, by locating and resolving a specified ADObject (an OU account, by querying on it's DN)
     .EXAMPLE
-    $gcw = get-GCFastXO -TenOrg cmw -ForestWide -showDebug -Verbose ; 
+    $gcw = get-GCFastXO -TenOrg cmw -ForestWide -showDebug -Verbose |?{$_.length} ; 
     get-aduser -id someuser -server $gcw ; 
     Obtain a ForestWide root domain gc (which includes the necessary hard-coded port '3268') and can then can be queried for an object in *any subdomain* in the forest, though it has a small subset of all ADObject properties). Handy for locating the hosting subdomain, and suitable dc, so that the full ADObject can be queried targeting a suitable subdomain dc.
     .LINK
