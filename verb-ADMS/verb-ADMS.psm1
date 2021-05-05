@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.34.0
+  Version     : 1.0.35.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -414,6 +414,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 9:04 AM 5/5/2021 added a detailed EXAMPLE for BP to splice whole shebang into other scripts
     * 12:07 PM 5/4/2021 it's got a bug in the output: something prior to the last write-output is prestuffing an empty item into the pipeline. Result is an array of objects coming out for $domaincontroller. Workaround, till can locate the source, is to post-filter returns for length, in the call: $domaincontroller = get-GCFastXO -TenOrg $TenOrg -ADObject @($Rooms)[0] -verbose:$($verbose) |?{$_.length} ; added the workaround to the examples
     * 11:18 AM 4/5/2021 retooled again, not passing to pipeline ;  added ForestWide param, to return a root forest dom gc with the appended 3268 port
     * 3:37 PM 4/1/2021 fixed enhcodeing char damage in $rgxSamAcctName, fixed type-conv error (EXch) for returns from get-addomaincontroller ; 
@@ -452,6 +453,67 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     $gcw = get-GCFastXO -TenOrg cmw -ForestWide -showDebug -Verbose |?{$_.length} ; 
     get-aduser -id someuser -server $gcw ; 
     Obtain a ForestWide root domain gc (which includes the necessary hard-coded port '3268') and can then can be queried for an object in *any subdomain* in the forest, though it has a small subset of all ADObject properties). Handy for locating the hosting subdomain, and suitable dc, so that the full ADObject can be queried targeting a suitable subdomain dc.
+    .EXAMPLE
+    load-ADMS ;
+    if(!$global:ADPsDriveNames){
+        $smsg = "(connecting X-Org AD PSDrives)" ; 
+        if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $global:ADPsDriveNames = mount-ADForestDrives -verbose:$($verbose) ;
+    } ;     
+    $domaincontroller = $null ;
+    pushd ; 
+    if( $tPsd = "$((Get-Variable  -name "$($TenOrg)Meta").value.ADForestName -replace $rgxDriveBanChars):" ){
+        if(test-path $tPsd){
+            $error.clear() ;
+            TRY {
+                set-location -Path $tPsd -ea STOP ;
+                $objForest = get-adforest ;
+                $doms = @($objForest.Domains) ; 
+                if(($doms|?{$_ -ne $objforest.name}|measure).count -eq 1){
+                    $subdom = $doms|?{$_ -ne $objforest.name} ;
+                    $domaincontroller = get-gcfastxo -TenOrg $TenOrg -Subdomain $subdom -verbose:$($verbose) |?{$_.length} ;
+                    $smsg = "get-gcfastxo:returned $($domaincontroller)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } else {
+                    enable-forestview ;
+                    $domaincontroller = $null ;
+                } ;
+            } CATCH {
+                $ErrTrapd=$Error[0] ;
+                $smsg= "Failed to exec cmd because: $($ErrTrapd)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $statusdelta = ";ERROR"; 
+                if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+                if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                popd ; 
+                BREAK ;
+            } ;
+        } else {
+            $smsg = "UNABLE TO FIND *MOUNTED* AD PSDRIVE $($Tpsd) FROM `$$($TENorg)Meta!" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
+            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            $statusdelta = ";ERROR"; 
+            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+            BREAK ;
+        } ;
+    } else {
+        $smsg = "UNABLE TO RESOLVE PROPER AD PSDRIVE FROM `$$($TENorg)Meta!" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $statusdelta = ";ERROR"; 
+        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+        BREAK ;
+    } ;
+    popd ; 
+    Detailed example demoing cross-domain dc pull, leveraging psData
     .LINK
     https://github.com/tostka/verb-ADMS
     #>
@@ -1471,8 +1533,8 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU1q+SlymaL1XdfKQFu9aeX2Pn
-# rOugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULAvKPD0jPWE9vTHDEX9y9hDt
+# thKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1487,9 +1549,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSHMcV3
-# 4lX4YKE/Fs8Yat6UrsJLCjANBgkqhkiG9w0BAQEFAASBgA3ORFi+Dl9lFyrTMsL7
-# IDFOK3M2iR2JEgYIVXzC027kJkVnqPzsMn4VLeI4DlzsIDqVUraOOprKBOFGJTul
-# nm12JmeeVg3/sd5SyZ4hk7sBSNLC83RJTdAu+Xm/gC4XKjqKpPdCArZkFz/wulR3
-# 3vey0JTS1pB1Kv0gHm2BcESu
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQwjCIX
+# ulDC6/RYX1sCMgKK8ImSxDANBgkqhkiG9w0BAQEFAASBgDvz59AX8u7rJcJThvRB
+# tdNBsS9s9aSITAMMDctN7+nsZBnPJ6wEV9BVzbaFL0yDwuxq+Q17uv8Dk/AnRC2R
+# c+6EzB3Eh6eR8f8dAIxptUGgf9SlgzNWeeh8TI/6KQQMFbW4roEdbcIPZzwrs0GX
+# +de/V4O9bQjPre7kGCrmRqD9
 # SIG # End signature block
