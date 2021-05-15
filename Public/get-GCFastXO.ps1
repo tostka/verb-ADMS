@@ -17,6 +17,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
     * 9:04 AM 5/5/2021 added a detailed EXAMPLE for BP to splice whole shebang into other scripts
     * 12:07 PM 5/4/2021 it's got a bug in the output: something prior to the last write-output is prestuffing an empty item into the pipeline. Result is an array of objects coming out for $domaincontroller. Workaround, till can locate the source, is to post-filter returns for length, in the call: $domaincontroller = get-GCFastXO -TenOrg $TenOrg -ADObject @($Rooms)[0] -verbose:$($verbose) |?{$_.length} ; added the workaround to the examples
     * 11:18 AM 4/5/2021 retooled again, not passing to pipeline ;  added ForestWide param, to return a root forest dom gc with the appended 3268 port
@@ -89,8 +90,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 $statusdelta = ";ERROR"; 
-                if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-                if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+                if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+                if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
                 $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -102,8 +103,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             $statusdelta = ";ERROR"; 
-            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+            if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
             BREAK ;
         } ;
     } else {
@@ -111,8 +112,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $statusdelta = ";ERROR"; 
-        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+        if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
         BREAK ;
     } ;
     popd ; 

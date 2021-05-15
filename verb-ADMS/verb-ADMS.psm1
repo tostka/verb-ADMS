@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.35.0
+  Version     : 1.0.36.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -414,6 +414,7 @@ Function get-GCFastXO {
     AddedCredit : Concept inspired by Ben Lye's GetLocalDC()
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
     * 9:04 AM 5/5/2021 added a detailed EXAMPLE for BP to splice whole shebang into other scripts
     * 12:07 PM 5/4/2021 it's got a bug in the output: something prior to the last write-output is prestuffing an empty item into the pipeline. Result is an array of objects coming out for $domaincontroller. Workaround, till can locate the source, is to post-filter returns for length, in the call: $domaincontroller = get-GCFastXO -TenOrg $TenOrg -ADObject @($Rooms)[0] -verbose:$($verbose) |?{$_.length} ; added the workaround to the examples
     * 11:18 AM 4/5/2021 retooled again, not passing to pipeline ;  added ForestWide param, to return a root forest dom gc with the appended 3268 port
@@ -486,8 +487,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 $statusdelta = ";ERROR"; 
-                if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-                if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+                if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+                if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
                 $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -499,8 +500,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             $statusdelta = ";ERROR"; 
-            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+            if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
             BREAK ;
         } ;
     } else {
@@ -508,8 +509,8 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } 
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $statusdelta = ";ERROR"; 
-        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+        if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
         BREAK ;
     } ;
     popd ; 
@@ -1533,8 +1534,8 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULAvKPD0jPWE9vTHDEX9y9hDt
-# thKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUkkbz5rBweiBuxtEfPCIWbfpd
+# 1MygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1549,9 +1550,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQwjCIX
-# ulDC6/RYX1sCMgKK8ImSxDANBgkqhkiG9w0BAQEFAASBgDvz59AX8u7rJcJThvRB
-# tdNBsS9s9aSITAMMDctN7+nsZBnPJ6wEV9BVzbaFL0yDwuxq+Q17uv8Dk/AnRC2R
-# c+6EzB3Eh6eR8f8dAIxptUGgf9SlgzNWeeh8TI/6KQQMFbW4roEdbcIPZzwrs0GX
-# +de/V4O9bQjPre7kGCrmRqD9
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSe7rcd
+# KJpqbkC188Vw4uShL0dYUTANBgkqhkiG9w0BAQEFAASBgDqY08MiTQ8u1/pP5wJI
+# COMIIbdLpIiO8n11kbF6OtOCkAfWvEmxACyiL/Eqx7u1gbvdm83kn7YBAlbP6EMb
+# vO0tEfAT2OVOA5L5emNjE9FkhSVu8T+dY77vGPB1WT3CSwaz8hpGH5z4Ct4Sfwoz
+# ZL6RSLsJpoy+pFRc1yNQktdS
 # SIG # End signature block
