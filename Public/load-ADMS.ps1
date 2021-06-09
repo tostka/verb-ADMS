@@ -1,4 +1,4 @@
-#*----------v Function load-ADMS v----------
+#*------v load-ADMS.ps1 v------
 function load-ADMS {
     <#
     .SYNOPSIS
@@ -8,6 +8,7 @@ function load-ADMS {
     Website:	http://toddomation.com
     Twitter:	http://twitter.com/tostka
     REVISIONS   :
+    * 2:10 PM 6/9/2021 add verbose support 
     * 9:57 AM 11/26/2019 added $Cmdlet param, and ADPS_LoadDefaultDrive suppression evari, to speed up or permit selective loads of targeted cmdlests, stipped down the 'load every module' code to just target the single mod
     # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
     vers: 10:23 AM 4/15/2015 fmt doc cleanup
@@ -36,15 +37,17 @@ function load-ADMS {
     #load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ;
     Demo a load from the verb-ADMS.ps1 module, with opt specific -Cmdlet set
     #>
+    [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage="Specifies an array of cmdlets that this cmdlet imports from the module into the current session. Wildcard characters are permitted[-Cmdlet get-aduser]")]
         [ValidateNotNullOrEmpty()]$Cmdlet
     ) ;
+    $Verbose = ($VerbosePreference -eq 'Continue') ;
     # focus specific cmdlet loads to SPEED them UP!
     $tMod = "ActiveDirectory" ;
     $ModsReg=Get-Module -Name $tMod -ListAvailable ;
     $ModsLoad=Get-Module -name $tMod ;
-    $pltAD=@{Name=$tMod ; ErrorAction="Stop" } ;
+    $pltAD=@{Name=$tMod ; ErrorAction="Stop"; Verbose = ($VerbosePreference -eq 'Continue') } ;
     if($Cmdlet){$pltAD.add('Cmdlet',$Cmdlet) } ;
         if ($ModsReg) {
         if (!($ModsLoad)) {
@@ -60,4 +63,6 @@ function load-ADMS {
     } # if-E ;
 } #*----------^END Function load-ADMS ^----------
 # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
-if(!(get-alias | Where-Object{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; } ;
+if(!(get-alias | Where-Object{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; }
+
+#*------^ load-ADMS.ps1 ^------

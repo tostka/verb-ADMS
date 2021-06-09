@@ -18,6 +18,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    # 3:34 PM 6/9/2021 rev'd all echos to write-verbose only (silent op)
     # 12:24 PM 3/19/2021 added -NoTOL to suppress inaccessible TOL forest (until network opens up the blocked ports) ;  flipped userroles to array SID,ESVC,LSVC, trying to get it to *always* pull working acct (failing in CMW)
     # 3:07 PM 3/18/2021 swapped overlapping vari names with prefixed $l[name] variants, also set to $script:Name scopes, to ensure no clashing. 
     # 7:05 AM 10/23/2020 added creation of $global:ADPsDriveNames when -Scope is global
@@ -122,7 +123,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
             
             $smsg = "(checking:$(($globalMeta.value)['o365_Prefix']):acct context)" ; 
             if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
             if($globalMeta.value.OP_ESvcAcct){
                 #if($env:username -eq $globalMeta.value.OP_ESvcAcct.split('\')[1]) {
                 if("$($env:userdomain)\$($env:username)" -eq $globalMeta.value.OP_ESvcAcct) {
@@ -150,7 +151,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
         if($userrole){
             $smsg = "($($env:username): Detected `$UserRole:$($UserRole))" ; 
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            else{ write-verbose  "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         } else { 
                 throw "Unrecognized local logon: $($env:userdomain)\$($env:username)!" ; 
         } ; 
@@ -188,24 +189,24 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
                     $lforestsName = (Get-Variable  -name "$($lTenOrg)Meta").value.ADForestName ;
                     $smsg = "Processing forest:$($lTenOrg):$($lLegacyDomain)::$($lforestsName)::$($adminCred.username)";
                     if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    else{ write-verbose  "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                     $lforests.add($lforestsName,$adminCred) ;
                 }else {
                     $smsg = "*SKIP*:Processing forest:$($lTenOrg):::(UNCONFIGURED)";
                     if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    else{ write-verbose  "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                 } ;
             } else { 
                  $smsg = "*SKIP*:Processing forest:$($lTenOrg):::(no `$$($lTenOrg)Meta.LegacyDomain value configured)"; ; 
                 if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
             } ; 
  
         } ; # loop-E
 
         if(-not(get-module ActiveDirectory)){
             # suppress VerbosePreference:Continue, if set, during mod loads (VERY NOISEY)
-            if($VerbosePreference = "Continue"){
+            if($VerbosePreference -eq "Continue"){
                 $VerbosePrefPrior = $VerbosePreference ;
                 $VerbosePreference = "SilentlyContinue" ;
                 $verbose = ($VerbosePreference -eq "Continue") ;
@@ -251,7 +252,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
 
                 $smsg = "Creating AD Forest PSdrive:`nNew-PSDrive w`n$(($pltNpsD|out-string).trim())" ;
                 if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                else{ write-verbose  "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                 $bRet = New-PSDrive @pltNpsD ;
             } CATCH {
                 Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
@@ -275,7 +276,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
             if($scope -eq 'global'){
                 $smsg = "(creating/updating `$global:ADPsDriveNames with summary of the new PSdrives)" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 $global:ADPsDriveNames = New-Object PSObject -Property $retHash 
             } ; 
             New-Object PSObject -Property $retHash | write-output ;
