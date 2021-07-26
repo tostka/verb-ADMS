@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.38.0
+  Version     : 1.0.39.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -1014,6 +1014,7 @@ function load-ADMS {
     Website:	http://toddomation.com
     Twitter:	http://twitter.com/tostka
     REVISIONS   :
+    * 9:18 AM 7/26/2021 added add-PSTitleBar ADMS tag, w verbose supp; moved connect-ad alias into function alias spec
     * 2:10 PM 6/9/2021 add verbose support 
     * 9:57 AM 11/26/2019 added $Cmdlet param, and ADPS_LoadDefaultDrive suppression evari, to speed up or permit selective loads of targeted cmdlests, stipped down the 'load every module' code to just target the single mod
     # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
@@ -1044,6 +1045,7 @@ function load-ADMS {
     Demo a load from the verb-ADMS.ps1 module, with opt specific -Cmdlet set
     #>
     [CmdletBinding()]
+    [Alias('connect-AD')]
     PARAM(
         [Parameter(HelpMessage="Specifies an array of cmdlets that this cmdlet imports from the module into the current session. Wildcard characters are permitted[-Cmdlet get-aduser]")]
         [ValidateNotNullOrEmpty()]$Cmdlet
@@ -1055,10 +1057,11 @@ function load-ADMS {
     $ModsLoad=Get-Module -name $tMod ;
     $pltAD=@{Name=$tMod ; ErrorAction="Stop"; Verbose = ($VerbosePreference -eq 'Continue') } ;
     if($Cmdlet){$pltAD.add('Cmdlet',$Cmdlet) } ;
-        if ($ModsReg) {
+    if ($ModsReg) {
         if (!($ModsLoad)) {
             $env:ADPS_LoadDefaultDrive = 0 ;
             import-module @pltAD;
+            Add-PSTitleBar 'ADMS' -verbose:$($VerbosePreference -eq "Continue") ;
             return $TRUE;
         } else {
             return $TRUE;
@@ -1067,9 +1070,7 @@ function load-ADMS {
         Write-Error {"$((get-date).ToString('HH:mm:ss')):($env:computername) does not have AD Mgmt Tools installed!";};
         return $FALSE
     } # if-E ;
-} #*----------^END Function load-ADMS ^----------
-# 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
-if(!(get-alias | Where-Object{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; }
+}
 
 #*------^ load-ADMS.ps1 ^------
 
@@ -1539,8 +1540,8 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUrLfra/Jegsu1df8HGV9ABEj8
-# B7ugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU2v5wv1TeH/EDWi/BmlNb7TQx
+# OlCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1555,9 +1556,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQdTfq5
-# 4SWai6I8wYrqFq9zCPpKXTANBgkqhkiG9w0BAQEFAASBgLelufdhq2NoKS7SwHwT
-# uBpAUCrVn9b2at+YnJpCNv6vWqSMNBGCiBXWDtHSeZO7EMijh6k1n9TCCZrXs8LO
-# zJlARvC0NTzI0kOewjJ+lMC82QADAbMJT/2YWDRnRL1DW0V10hSmnJrNpSU/zAzY
-# J95ZmEO0GzESV192nebx2/7W
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSiQdG9
+# RIKVwN745mRMdZyQ+pHmrzANBgkqhkiG9w0BAQEFAASBgIN4nwkcKDAS0HNUteao
+# PCpRSet2Drq2HLxIMRFFz4QOb8uCcZSFoPf3JNhWUA4nq/Gv0s59hTTbjg7fmQIF
+# r9ZersU8IkYEOF2fXD9gL4bV40HFc/dFx9gQV6u9VZ8HyVkqIA6uC/Lhzr3Jdqsu
+# hcNY2HZTSl4/B5Zs2+/UsJCP
 # SIG # End signature block

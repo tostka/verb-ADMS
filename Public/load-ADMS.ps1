@@ -8,6 +8,7 @@ function load-ADMS {
     Website:	http://toddomation.com
     Twitter:	http://twitter.com/tostka
     REVISIONS   :
+    * 9:18 AM 7/26/2021 added add-PSTitleBar ADMS tag, w verbose supp; moved connect-ad alias into function alias spec
     * 2:10 PM 6/9/2021 add verbose support 
     * 9:57 AM 11/26/2019 added $Cmdlet param, and ADPS_LoadDefaultDrive suppression evari, to speed up or permit selective loads of targeted cmdlests, stipped down the 'load every module' code to just target the single mod
     # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
@@ -38,6 +39,7 @@ function load-ADMS {
     Demo a load from the verb-ADMS.ps1 module, with opt specific -Cmdlet set
     #>
     [CmdletBinding()]
+    [Alias('connect-AD')]
     PARAM(
         [Parameter(HelpMessage="Specifies an array of cmdlets that this cmdlet imports from the module into the current session. Wildcard characters are permitted[-Cmdlet get-aduser]")]
         [ValidateNotNullOrEmpty()]$Cmdlet
@@ -49,10 +51,11 @@ function load-ADMS {
     $ModsLoad=Get-Module -name $tMod ;
     $pltAD=@{Name=$tMod ; ErrorAction="Stop"; Verbose = ($VerbosePreference -eq 'Continue') } ;
     if($Cmdlet){$pltAD.add('Cmdlet',$Cmdlet) } ;
-        if ($ModsReg) {
+    if ($ModsReg) {
         if (!($ModsLoad)) {
             $env:ADPS_LoadDefaultDrive = 0 ;
             import-module @pltAD;
+            Add-PSTitleBar 'ADMS' -verbose:$($VerbosePreference -eq "Continue") ;
             return $TRUE;
         } else {
             return $TRUE;
@@ -62,7 +65,3 @@ function load-ADMS {
         return $FALSE
     } # if-E ;
 } #*----------^END Function load-ADMS ^----------
-# 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
-if(!(get-alias | Where-Object{$_.name -like "connect-ad"})) {Set-Alias 'connect-ad' -Value 'load-ADMS' ; }
-
-#*------^ load-ADMS.ps1 ^------
