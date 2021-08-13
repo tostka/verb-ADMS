@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.40.0
+  Version     : 1.0.41.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -1080,6 +1080,9 @@ function load-ADMS {
     load-ADMS | out-null ;
     #load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ;
     Demo a load from the verb-ADMS.ps1 module, with opt specific -Cmdlet set
+    .EXAMPLE
+    if(connect-ad){write-host 'connected'}else {write-warning 'unable to connect'}  ;
+    Variant capturing & testing returned (returns true|false), using the alias name (if don't cap|eat return, you'll get a 'True' in console
     #>
     [CmdletBinding()]
     [Alias('connect-AD')]
@@ -1577,8 +1580,8 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsYIs2SEh5MW8fW43RBdbQHp3
-# GmigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnLdZNczPlLJ1VoBe7Fdl0Bip
+# mzagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1593,9 +1596,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRttK0M
-# e/fWtoKm5IUnPpxdzB79fTANBgkqhkiG9w0BAQEFAASBgCu9tUiWadw3Rai3pN/7
-# hveGnVD++fazehmOCduds0wUCVPPYajIeByStaw1id+Z/BFgLhTqdvOuMujP+VeC
-# CW5VTIfUHo9irRcEfoPAZ80x8tbl6jP61h/8Ea4a2EZsXXgelPKQJDT4gFyA2y4l
-# iN43bpd/fdswOjgeTuxGcyUQ
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTfYY1Z
+# q/GXwCbY9dTf6VDEZiSK5DANBgkqhkiG9w0BAQEFAASBgD5aJJVNC47uq/vJ7o6N
+# X+lKeOZhuneUCrdVkNpg+8da0rUmiMDhhJa1hXh1gUkC1KFzd9cOJaEzeDeeCF6D
+# FHxURXSZzhvZjmjRa2s4mp2RMhtmvGeAx8W9dkIkG17yZ2vfdcIzx7HnoFmNVdhh
+# Z4eUFKPPQp2PEI+Ngtjjoh/r
 # SIG # End signature block

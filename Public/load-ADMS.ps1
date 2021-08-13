@@ -37,6 +37,9 @@ function load-ADMS {
     load-ADMS | out-null ;
     #load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ;
     Demo a load from the verb-ADMS.ps1 module, with opt specific -Cmdlet set
+    .EXAMPLE
+    if(connect-ad){write-host 'connected'}else {write-warning 'unable to connect'}  ;
+    Variant capturing & testing returned (returns true|false), using the alias name (if don't cap|eat return, you'll get a 'True' in console
     #>
     [CmdletBinding()]
     [Alias('connect-AD')]
