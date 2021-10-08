@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.41.0
+  Version     : 1.0.42.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -1580,8 +1580,8 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnLdZNczPlLJ1VoBe7Fdl0Bip
-# mzagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUlZEj7GjwdD86XmBNy5CHQySc
+# JeugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1596,9 +1596,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTfYY1Z
-# q/GXwCbY9dTf6VDEZiSK5DANBgkqhkiG9w0BAQEFAASBgD5aJJVNC47uq/vJ7o6N
-# X+lKeOZhuneUCrdVkNpg+8da0rUmiMDhhJa1hXh1gUkC1KFzd9cOJaEzeDeeCF6D
-# FHxURXSZzhvZjmjRa2s4mp2RMhtmvGeAx8W9dkIkG17yZ2vfdcIzx7HnoFmNVdhh
-# Z4eUFKPPQp2PEI+Ngtjjoh/r
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSs7urm
+# SF8pV/0X6OMWmntSzDtxVjANBgkqhkiG9w0BAQEFAASBgHz/pLSr8Vfk72e+upIw
+# VN22d1ZDUo7yj2Qrbr+kPxLwpD3nazISh+ibGmI+I/cK6lBDl3taSJH330StyqeW
+# CJc4HhfJzOFkcRKJBF9po7KOLxgc/sop+XBF7n8vJBybq8ZInQhO/zD3YrbJGSbu
+# u0bBQbRnoF/aS6b4ZNtxmhnV
 # SIG # End signature block
