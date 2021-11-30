@@ -19,7 +19,7 @@ function resolve-ADRightsGuid {
     Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell,ActiveDirectory,Permissions
     REVISIONS
-    * 1:51 PM 11/29/2021 init vers, adapted from demo code by Faris Malaeb [Understanding Get-ACL and AD Drive Output - PowerShell Community - devblogs.microsoft.com/](https://devblogs.microsoft.com/powershell-community/understanding-get-acl-and-ad-drive-output/)
+    * 1:51 PM 11/29/2021 validated functional; init vers, adapted from demo code by Faris Malaeb [Understanding Get-ACL and AD Drive Output - PowerShell Community - devblogs.microsoft.com/](https://devblogs.microsoft.com/powershell-community/understanding-get-acl-and-ad-drive-output/)
     .DESCRIPTION
     resolve-ADRightsGuid() - Resolve a given get-ACL guid value to it's Name
     Queries the AD: AD psdrive provider under the SchemaNamingContext & Extended-Rights, then loops past the set finding the matching guid, and returning the resolved guid name value
@@ -28,6 +28,12 @@ function resolve-ADRightsGuid {
     .EXAMPLE
     $guidName =resolve-ADRightsGuid -guid 'bf9679c0-0de6-11d0-a285-00aa003049e2' 
     Resolve the guid above to it's matching Name ('Self-Membership")
+    .EXAMPLE
+    # a random function that updates an ACL and  returns the acl as an object
+    $aclret = grant-ADGroupManagerUpdateMembership -User SAMACCTNAME -group 'ADGROUPNAME' -verbose -returnobject ; 
+    # resolve the returned acl guid ('ObjectType' prop) to it's matching name. 
+    $guidname = resolve-adrightsguid -guid ($aclret.ObjectType) -verbose ;
+    Example demoing a returned ACL guid, resolved to it's matching name
     .LINK
     https://devblogs.microsoft.com/powershell-community/understanding-get-acl-and-ad-drive-output/
     .LINK
