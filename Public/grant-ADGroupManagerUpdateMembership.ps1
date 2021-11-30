@@ -39,9 +39,9 @@ function grant-ADGroupManagerUpdateMembership {
     Configure the permissions for 'someuser' on the 'group X' group, with verbose output
     .LINK
     #>
-    #Requires -Modules ActiveDirectory, verb-ADMS
+    #Requires -Modules ActiveDirectory
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("(lyn|bcc|spb|adl)ms6(4|5)(0|1).(china|global)\.ad\.toro\.com")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
-## [OutputType('bool')] # optional specified output type
+    ## [OutputType('bool')] # optional specified output type
 
     [CmdletBinding()]
     PARAM (

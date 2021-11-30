@@ -12,7 +12,7 @@
 RootModule = 'verb-ADMS.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.42'
+ModuleVersion = '1.1.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'ActiveDirectory PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','get-DCLocal','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','get-SiteMbxOU','load-ADMS','mount-ADForestDrives','Sync-AD','unmount-ADForestDrives','Validate-Password')
+FunctionsToExport = @('find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','get-DCLocal','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','unmount-ADForestDrives','Validate-Password')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUAE9544kqCFwWjCUS6NIdVNX8
-# N46gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUs99RSWBoFzcRMBIlXT4iY4MQ
+# P46gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBR/paSt
-# lTTmRabtVXiJkwBj1+bf6TANBgkqhkiG9w0BAQEFAASBgH4ItU5KsxKILzC+GCJX
-# G+S4tVxSUMSLXZ7T9T+0DVbVDCv9HhUB4NO7MYqcnUP1i+Q2fuqLUxX4CUTzJjF/
-# U3avONh/eExTJnB1MLBv9mGnHNcSC2s9K4jcCIjzf6SI4ZFk1zFzs7h5YMJMYOOq
-# o5KLNGPQFLShydq83qdZ2Fh9
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTfsdR3
+# PT0ISF5r65QiaFHSu3pZFzANBgkqhkiG9w0BAQEFAASBgH57w7yH6hDbvfhUSqbh
+# Q0dQCLPLAJJLkUETXSxYV67pKKuKCWxaz0gSRRS9cpRCFiYpcxkiDgrM+3nx0X+T
+# SWAzqyQqp7RjgSgm7RVLG/HDczA/jMIrb+mr+A+lB4EPpZ6BO+MGn0cEmnWSjfe5
+# cnIOcfDJyzEhZxc3Ur0XF9aI
 # SIG # End signature block
