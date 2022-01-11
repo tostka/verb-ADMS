@@ -1,7 +1,8 @@
-﻿find-SiteRoleOU:SiteOUName
+﻿find-SiteRoleOU:SearchBase
 find-SiteRoleOU:RootOU
 find-SiteRoleOU:Domain
 find-SiteRoleOU:Role
+find-SiteRoleOU:TargetName
 find-SiteRoleOU:Verbose
 find-SiteRoleOU:vb
 find-SiteRoleOU:Debug

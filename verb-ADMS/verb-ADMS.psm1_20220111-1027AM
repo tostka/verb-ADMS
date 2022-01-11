@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.0.42.0
+  Version     : 1.1.1.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -73,6 +73,269 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 #*======v FUNCTIONS v======
 
 
+
+#*------v find-SiteRoleOU.ps1 v------
+function find-SiteRoleOU {
+    <#
+    .SYNOPSIS
+    find-SiteRoleOU() - Given a -Role specification, and SearchBase OU, locates and returns DN for standardized storage OU's for common mail objects. Through use of the 'Any' -Role, and -TargetName specification, can locate specific named OUs anywhere in the hierarchy. 
+    .NOTES
+    Version     : 1.0.1
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-03
+    FileName    : 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-adms
+    Tags        : Powershell,ActiveDirectory
+    REVISIONS
+    * 12:37 PM 12/2/2021 ren $SiteOUName to $SearchBase, flipped param to support the OU below with search should be run, in form of either the OU Name, or a full DN; added nesting support and a loop to try the search with and wo wildcard between SearchBase OU and the FindOU
+    * 12:17 PM 11/23/2021 port over and expand get-SiteMbxOU to cover range of Email-related role OU's, via lookup, keyed from a starting point: Site root OU, or child domain root. 
+    * 10:57 AM 4/3/2020 cleanup to modularize, added verbose sup, updated CBH
+    # 2:51 PM 3/6/2017 add -Resource param to steer to 'Email Resources'
+    # 12:36 PM 2/27/2017 fixed to cover breaks frm AD reorg OU name changes, Generics are all now in a single OU per site
+    # 11:56 AM 3/31/2016 port to find-SiteRoleOU; validated that latest round of updates are still functional; minor cleanup
+    * 11:31 AM 3/16/2016 debugged to function.
+    * 1:34 PM 3/15/2016 adapted SecGrp OU lookup to MailContact OU
+    * 11:05 AM 10/7/2015 initial vers
+    .DESCRIPTION
+    find-SiteRoleOU() - Given a -Role specification, and SearchBase OU, locates and returns DN for standardized storage OU's for common mail objects. Through use of the 'Any' -Role, and -TargetName specification, can locate specific named OUs anywhere in the hierarchy. 
+    - Role keywords, and traditional locations: 
+      -DistributionGroup : OU=Distribution Groups,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+      -Shared (Mbxs): OU=Generic Email Accounts,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+      -Resource (Mbxs) (Room/Equipment): OU=Email Resources,OU=XXX,...,DC=xxxx,DC=com
+      -PermissionGroup: OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+      -Contact: OU=Email Contacts,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+      -Users (Mbxs): OU=Users,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+      -Any : used with the -TargetName spec to search for the named DN anywhere below the specified SearchBase
+    .PARAMETER SearchBase
+    Site OU name below which to Query[ABC]
+    .PARAMETER Domain
+    Specify the domain fqdn below which to which to Query[-domain childdom.domain.org.com]
+    .PARAMETER Role
+    OU Role to find (Shared|Resource|DistributionGroup|PermissionGroup|Contact|Users)[-Role Shared]
+    .PARAMETER  TargetName
+    Optional parameter used with the -Role Any option, to search for any specified OU in the SearchBase or Domain[-TargetName 'Exchange Servers'].
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    System.String containing DN of resolved OU (can be an array where multiple matches are found, results should be checked)
+    .EXAMPLE
+    $OU=find-SiteRoleOU -SearchBase SITE -Role Shared
+    Retrieve the DN OU path for the 'Shared mailbox' storage OU, somewhere below the Searchbase, specified as a the OU name (directly below the tree root).
+    .EXAMPLE
+    $tOU = find-SiteRoleOU -Domain 'childdom.childdom.company.tld'' -Role Any -TargetName 'Exchange Servers' -verbose 
+    Retrieve DN for the Users mailbox OU within the specified Domain (specified as a domain DN), with verbose output
+    .EXAMPLE
+    $OU = find-SiteRoleOU -SearchBase 'OU=OUNAME,DC=CHILDDOM,DC=CHILDDOM,DC=COMPANY,DC=TLD' -Role Any -TargetName 'Exchange Servers' -verbose 
+    Demos use of the '-Role Any' and -TargetName params, to return the DN for for *any* specified OU name, path for the 'Exchange Servers' OU, somewhere below the Searchbase, specified as a DN
+    .LINK
+    https://github.com/tostka/verb-adms
+    #>
+    #Requires -Modules ActiveDirectory
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("(lyn|bcc|spb|adl)ms6(4|5)(0|1).(china|global)\.ad\.toro\.com")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
+    [OutputType('System.String')] # optional specified output type
+    [CmdletBinding(DefaultParameterSetName='Site')]
+    PARAM (
+        [parameter(ParameterSetName='Site',Mandatory=$True,HelpMessage="SITE OU name below which to Query[ABC]")]
+        [Alias('RootOU')]
+        [string]$SearchBase,
+        [parameter(ParameterSetName='Domain',Mandatory=$True,HelpMessage="Specify the domain fqdn below which to which to Query[-domain childdom.domain.org.com]")]
+        [ValidatePattern("(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)")]
+        [string]$Domain,
+        [parameter(Mandatory=$True,HelpMessage="OU Role to find (Shared|Resource|DistributionGroup|PermissionGroup|Contact|Users|Any)[-Role Shared]")]
+        [ValidateSet('Shared','Resource','DistributionGroup','PermissionGroup','Contact','Users','Any')]
+        [string]$Role,
+        [parameter(HelpMessage="Optional parameter used with the -Role Any option, to search for any specified OU in the SearchBase or Domain.")]
+        [string]$TargetName
+    ) ;  
+    $verbose = ($VerbosePreference -eq "Continue") ; 
+    
+    # configurable constants that drive policy role OU locations:
+    $SharedOU='^OU=Generic Email Accounts' ;
+    $ResourceOU="^OU=Email Resources" ;
+    $DistributionGroup='^OU=Distribution Groups' 
+    $PermissionGroupOU='^OU=Email Access,OU=SEC Groups,OU=Managed Groups' ;
+    $ContactOU='^OU=Email Contacts' ;
+    $UsersOU='^OU=Users' ;
+    
+    # rgx to detect DN-style SearchBase
+    $rgxDistName = "^((CN=([^,]*)),)?((((?:CN|OU)=[^,]+,?)+),)?((DC=[^,]+,?)+)$" ;
+
+    if($TargetName -AND ($Role -ne 'ANY')){
+        $smsg = "-TargetName specified wo use of the required -Role Any specification" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        throw $smsg ;
+        Break ; 
+    } ; 
+
+    switch ($Role){
+        <# -DistributionGroup : OU=Distribution Groups,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+        DW equiv:OU=Distribution Groups,OU=People,OU=_TTC_Sync_CMW_NoSync,DC=ditchwitch,DC=cmw,DC=internal
+        -Shared (Mbxs): OU=Generic Email Accounts,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+        DW equiv:OU=Generic Email Accounts,OU=People,OU=_TTC_Sync_CMW_NoSync,DC=ditchwitch,DC=cmw,DC=internal
+        -Resource (Mbxs) (Room/Equipment): OU=Email Resources,OU=XXX,...,DC=xxxx,DC=com
+        DW equiv:OU=Email Resources,OU=People,OU=_TTC_Sync_CMW_NoSync,DC=ditchwitch,DC=cmw,DC=internal # doesn't exist yet
+        -PermissionGroup: OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+        DW equiv: OU=Email Access,OU=Security Groups,OU=People,OU=_TTC_Sync_CMW_NoSync,DC=ditchwitch,DC=cmw,DC=internal
+        -Contact: OU=Email Contacts,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+        # they've curr got them in users, should be:
+        DW equiv: OU=Email Contacts,OU=People,OU=_TTC_Sync_CMW_NoSync,DC=ditchwitch,DC=cmw,DC=internal # doesn't exist yet
+        -Users (Mbxs): OU=Users,OU=SITE,DC=CHILDDOM,DC=DOMAIN,DC=ORG,DC=com
+        DW equiv: OU=User Accounts,OU=People,OU=_TTC_Sync_CMW_NoSync,DC=ditchwitch,DC=cmw,DC=internal
+        #>
+
+        'Shared'{$FindOU=$SharedOU ;}
+        'Resource'{$FindOU=$ResourceOU ;}
+        'DistributionGroup'{$FindOU=$DistributionGroup ;}
+        'PermissionGroup'{$FindOU=$PermissionGroupOU }
+        'Contact'{$FindOU=$ContactOU;}
+        'Users'{$FindOU=$UsersOU ;}
+        'Any' {
+            # this represents a purely generic search for *any* named OU below SearchBase, requires the optional TargetName to specify target OU name
+            if($TargetName){
+                $FindOU = $TargetName ; 
+            } else {
+                $smsg = "Missing required -TargetName parameter spec. Required for use of the -Role Any option. " ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                throw $smsg ;
+                Break ; 
+            }  ; 
+        } ; 
+        default {
+            $smsg = "Unrecognized -Role:$($Rold). Please specify one of:`n(Shared|Resource|DistributionGroup|PermissionGroup|Contact|Users) " ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            Break ; 
+        }
+    } ; 
+    $error.clear() ;
+    TRY {
+        if($SearchBase){
+            $domain = (Get-ADDomain -Current LoggedOnUser).DNSRoot ; 
+            $smsg = "`$domain:$($domain)" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            $DomDN =  (get-addomain -id $domain -ea 'STOP').DistinguishedName ;
+            $smsg = "`$DomDN:$($DomDN)" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+
+            # loop it with & wo wildcard delimter (covers both cases, takes 1st that returns a DN)
+            foreach($nested in @($false,$true)){
+                $stack =@() ; 
+                $stack += "OU=$($FindOU)" ; 
+                if($SearchBase -match $rgxDistName){
+                    if($nested){
+                        $stack += '.*' ;
+                        $smsg = "(doing Nested .* OU search)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    } else { 
+                        $smsg = "(doing un-Nested .* OU search)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    } ; 
+                    # it's a DN, use it's elements as the base, reversed
+                    $stack += $SearchBase.split(',') ; 
+                } else { 
+                    # it's an OU name, resolve the OU
+                    if($nested){
+                        $stack += '.*' ;
+                        $smsg = "(doing Nested .* OU search)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    } else { 
+                        $smsg = "(doing un-Nested .* OU search)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    } ; 
+                    $stack += "OU=$($SearchBase)" ; 
+                    $stack += "$($DomDN)$" ; 
+                } 
+            
+                $DNFilter = $stack -join ',' ; 
+                $smsg = "`$DNFilter:$($DNFilter)" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                #$OUPath = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | ?{ $_.distinguishedname -match "^$($FindOU).*,OU=$($SearchBase),.*,DC=ad,DC=toro((lab)*),DC=com$" } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | select distinguishedname).distinguishedname.tostring() ;
+                #$OUPath = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | ?{ $_.distinguishedname -match "^$($FindOU),.*,OU=$($SearchBase),.*,DC=ad,DC=toro((lab)*),DC=com$" } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | select distinguishedname).distinguishedname.tostring() ;
+                $OUPath = Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $domain |
+                     ?{ $_.distinguishedname -match $DNFilter } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | 
+                     select distinguishedname
+                if($OUPath){
+                    $OUPath = $OUPath.distinguishedname.tostring() ; 
+                    Break ;
+                } ; 
+            } ; 
+        } elseif($Domain){
+            $smsg = "`$domain:$($domain)" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            $DomDN =  (get-addomain -id $domain -ea 'STOP').DistinguishedName ;
+            $smsg = "`$DomDN:$($DomDN)" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            foreach($nested in @($false,$true)){
+                $stack =@() ; 
+                $stack += "$($FindOU)" ; 
+                if($nested){
+                    $stack += '.*' ;
+                    $smsg = "(doing Nested .* OU search)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                } else { 
+                    $smsg = "(doing un-Nested .* OU search)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                } ; 
+                $stack += "$($DomDN)$" ; 
+                $DNFilter = $stack -join ',' ; 
+                $smsg = "`$DNFilter:$($DNFilter)" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                #$OUPath = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $domain | ?{ $_.distinguishedname -match "^$($FindOU),.*,$($DomDN)$" } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | select distinguishedname).distinguishedname.tostring() ; 
+                $OUPath = Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $domain | 
+                    ?{ $_.distinguishedname -match $DNFilter } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | 
+                    select distinguishedname ;
+                if($OUPath){
+                    $OUPath = $OUPath.distinguishedname.tostring() ; 
+                    Break ;
+                } ;
+            } ;  
+        } ;
+        If($OUPath -isnot [string]){      
+            # post-verification to ensure we've got a single OU spec
+            $smsg = "WARNING AD OU SEARCH SITE:$($InputSplat.SiteCode), FindOU:$($FindOU), FAILED TO RETURN A SINGLE OU...";
+            $smsg += "`n$(($OUPath.distinguishedname|out-string).trim())" ; 
+            $smsg = "" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            Break  ;
+        } ;
+        write-output $OUPath
+    } CATCH {
+        $ErrTrapd=$Error[0] ;
+        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #-=-record a STATUSWARN=-=-=-=-=-=-=
+        $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+        if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+        #-=-=-=-=-=-=-=-=
+        $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+    } ; 
+}
+
+#*------^ find-SiteRoleOU.ps1 ^------
 
 #*------v get-ADForestDrives.ps1 v------
 function get-ADForestDrives {
@@ -1041,6 +1304,217 @@ function get-SiteMbxOU {
 
 #*------^ get-SiteMbxOU.ps1 ^------
 
+#*------v grant-ADGroupManagerUpdateMembership.ps1 v------
+function grant-ADGroupManagerUpdateMembership {
+    <#
+    .SYNOPSIS
+    grant-ADGroupManagerUpdateMembership - For a specified ADGroup, add '[x]Manager can update membership list' (visible in ADUC on the gorup's Managed-By tab)
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2021-11-29
+    FileName    : 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-adms
+    Tags        : Powershell,ActiveDirectory,Permissions,Groups
+    REVISIONS
+    * 2:08 PM 11/30/2021 validated functional ; pulled verb-adms req, added alt to use get-addomaincontroller if verb-adms:get-gcfast() isn't avail
+    * 3:18 PM 11/29/2021 initial vers
+    .DESCRIPTION
+    grant-ADGroupManagerUpdateMembership - For a specified ADGroup, add '[x]Manager can update membership list' (visible in ADUC on the gorup's Managed-By tab)
+    This function is an alternative *ADMS*-native powershell approach, to the standard Exchange Mgmt Shell option:    
+    #-=-=-=-=-=-=-=-=
+    $grp=Get-DistributionGroup -id $group -domainc $dc;
+    $pltAADP=[ordered]@{ User=$Manager ; AccessRights='WriteProperty' ; Properties='Member' ; domaincontroller=$dc ; ErrorAction = 'STOP' ; whatif=$($whatif) ; } ;
+    $grp | Add-ADPermission @pltAADP ;
+    $ADPerms = $grp | Get-ADPermission -domainc $dc | ? {($_.Properties -match 'Member') -AND ($_.AccessRights -eq 'WriteProperty') -AND ($_.User -notlike 'AD\Exchange*')} ; 
+    #-=-=-=-=-=-=-=-=
+    (which throsw cryptic Access Denied errors, in my enviro, and I don't have time to chase undocumented low level AD perm errors). 
+    For me, the ADMS approach works either way. I'm moving ahead on the subject. 
+    .PARAMETER  User
+    Samaccountname/GUID/DN for user to be granted ManagedBy and 'Manager can update membership list'
+    .PARAMETER  group
+    AD identifyer (name,DN,guid) for ADGroup/DistribGroup to be configured with the updated permission
+    .PARAMETER .PARAMETER Whatif
+    Parameter to run a Test no-change pass [-Whatif]
+    .EXAMPLE
+    grant-ADGroupManagerUpdateMembership -user 'someuser' -group 'group X' -verbose ;
+    Configure the permissions for 'someuser' on the 'group X' group, with verbose output
+    .LINK
+    #>
+    #Requires -Modules ActiveDirectory
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("(lyn|bcc|spb|adl)ms6(4|5)(0|1).(china|global)\.ad\.toro\.com")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+
+    [CmdletBinding()]
+    PARAM (
+        [parameter(Mandatory=$True,HelpMessage="Samaccountname/GUID/DN for user to be granted ManagedBy and 'Manager can update membership list'")]
+        ##[Alias('XXX')]
+        [string]$User,
+        [parameter(Mandatory=$True,HelpMessage="AD identifyer (name,DN,guid) for ADGroup/DistribGroup to be configured with the updated permission")]
+        [string]$group,
+        [Parameter(HelpMessage="Switch to return the ACL object to the pipeline (rather than `$true/`$false)[-ReturnObject]")]
+        [switch] $ReturnObject,
+        [Parameter(HelpMessage="Whatif switch [-whatIf]")]
+        [switch] $whatIf
+    ) ;  
+    
+    $verbose = ($VerbosePreference -eq "Continue") ;
+    # constants
+    $propsACL = 'ActiveDirectoryRights','InheritanceType','ObjectType','AccessControlType','IdentityReference','IsInherited' ; 
+    $SelfMembershipGuid = [guid]'bf9679c0-0de6-11d0-a285-00aa003049e2' ;
+    $rights = [System.DirectoryServices.ActiveDirectoryRights]::WriteProperty -bOR [System.DirectoryServices.ActiveDirectoryRights]::ExtendedRight ;
+    $ACLType = [System.Security.AccessControl.AccessControlType]::Allow  ;
+    
+    $error.clear() ;
+    TRY {
+        if(get-command get-gcfast){
+            # use my verb-adms mod function if avail (validates speed)
+            $dc = get-gcfast -Verbose:$($VerbosePreference -eq "Continue") ;         
+        } else { 
+            # use default adms option
+            #$dc = (GET-ADDomaincontroller -discover).hostname
+            $dc = (Get-ADDomainController -Filter  {isGlobalCatalog -eq $true -AND Site -eq "$((get-adreplicationsite).name)"}).hostname| Get-Random ; 
+        } ; 
+        $pltGADU=[ordered]@{
+            identity = $user ;
+            server=$dc; ErrorAction='STOP'; 
+            #whatif=$($whatif);
+        } ; 
+        $smsg = "Get-ADUser w`n$(($pltGADU|out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        $grantee = Get-ADUser @pltGADU ;
+        
+        $granteeSID = [System.Security.Principal.SecurityIdentifier]$grantee.sid ; 
+        
+        $domNBName = (Get-ADDomain (($grantee.distinguishedName.Split(',') |?{$_ -like 'DC=*'}) -join ',')).NetBIOSName ; 
+        
+        $pltGADG=[ordered]@{
+            identity = $group ;
+            properties = '*' ; 
+            server=$dc; ErrorAction='STOP'; 
+            #whatif=$($whatif);
+        } ; 
+        $smsg = "Get-ADGroup w`n$(($pltGADG|out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        $tgroup = Get-ADGroup @pltGADG ;
+        
+        if ($tgroup.Managedby -AND ( ($tgroup.Managedby| get-recipient -ea 'STOP').distinguishedname -eq $grantee.distinguishedname )){
+            $smsg = "$($grantee) is currrent ManagedBy of target DG`n$($tgroup.managedby)" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } else { 
+            $smsg = "NOTE!: $($grantee) is *not* currrent ManagedBy of target DG!`n$($tgroup.managedby)" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            
+            $pltSADG=[ordered]@{
+                identity = $tgroup.DistinguishedName ;
+                Replace=@{managedBy=$grantee.DistinguishedName} ;
+                server=$dc; ErrorAction='STOP';
+                whatif=$($whatif);
+            } ;
+ 
+            $smsg = "$((get-date).ToString('HH:mm:ss')):Make User ManagedBy of Group:" ; 
+            $smsg += "`nSet-ADGroup w`n$(($pltSADG|out-string).trim())" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+            Set-ADGroup @pltSADG ; 
+            $smsg = "Get-ADGroup w`n$(($pltGADG|out-string).trim())" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            $tgroup = Get-ADGroup @pltGADG ;
+            $smsg = "POST Group: `n$(($tgroup|ft -a name,managedby | out-string).trim())" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } ;
+        
+        $ACLrule = New-Object System.DirectoryServices.ActiveDirectoryAccessRule($granteeSID, $rights, $ACLType, $SelfMembershipGuid) ;
+        
+        if(test-path -path 'AD:'){
+            $aclPath = "AD:\$($tgroup.distinguishedName)" ; 
+            $acl = Get-Acl $aclPath ;
+
+            if($grantACL = ($acl).Access |?{$_.objecttype -eq $SelfMembershipGuid -AND $_.InheritanceType -eq 'None' -AND $_.IdentityReference -eq "$($domNBName)\$($grantee.SamAccountName)"}){ 
+                $smsg = "Found EXISTING matching ACL for user and perms:`n$(($grantACL | fl $propsACL|out-string).trim())" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+            } else { 
+                $acl.AddAccessRule($ACLrule)  ;
+                $pltSACL=[ordered]@{
+                    acl=$acl ;
+                    path=$aclPath ;  
+                    ErrorAction='STOP'; whatif=$($whatif);
+                } ;
+                $smsg = "Set-Acl w`n$(($pltSACL|out-string).trim())" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            
+                Set-Acl @pltSACL ; 
+                if(-not $whatif){
+                $acl = Get-Acl $aclPath ;
+                if($grantACL = ($acl).Access |?{$_.objecttype -eq $SelfMembershipGuid -AND $_.InheritanceType -eq 'None' -AND $_.IdentityReference -eq "$($domNBName)\$($grantee.SamAccountName)"}){ 
+                    $smsg = "Updated matching ACL w`n$(($grantACL | fl $propsACL|out-string).trim())" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } else { 
+                    $smsg = "Unable to locate Updated matching ACL w`n" ; 
+                    $smsg += "`n| ?{$_.objecttype -eq $SelfMembershipGuid -AND $_.InheritanceType -eq 'None' -AND $_.IdentityReference -eq '$($domNBName)\$($grantee.SamAccountName)'} ; "
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                } ; 
+                } else { 
+                    $smsg = "(-whatif: skipping verifications)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ; 
+            } ; 
+        } else { 
+            $smsg = "Missing 'AD:' PsDrive!" 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level warn } #Error|Warn|Debug 
+            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            throw $smsg ;
+        } ; 
+
+        if($ReturnObject){
+            $smsg = "(-ReturnObject specified: returning applied ACL object to pipeline)" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            $grantACL | write-output ; 
+        } else { 
+            $smsg = "(returning `$true to pipeline)" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            $true | write-output ; 
+        } ; 
+
+    } CATCH {
+        $ErrTrapd=$Error[0] ;
+        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #-=-record a STATUSWARN=-=-=-=-=-=-=
+        $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+        if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+        #-=-=-=-=-=-=-=-=
+        $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $false | write-output ; 
+        Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+    } ; 
+}
+
+#*------^ grant-ADGroupManagerUpdateMembership.ps1 ^------
+
 #*------v load-ADMS.ps1 v------
 function load-ADMS {
     <#
@@ -1403,6 +1877,99 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
 
 #*------^ mount-ADForestDrives.ps1 ^------
 
+#*------v resolve-ADRightsGuid.ps1 v------
+function resolve-ADRightsGuid {
+    <#
+    .SYNOPSIS
+    resolve-ADRightsGuid() - Resolve a given get-ACL guid value to it's Name
+    .NOTES
+    Version     : 1.0.1
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    AddedCredit : Faris Malaeb
+    AddedWebsite:	https://devblogs.microsoft.com/powershell-community/understanding-get-acl-and-ad-drive-output/
+    AddedTwitter:	URL
+    CreatedDate : 2021-11-29
+    FileName    : 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,Permissions
+    REVISIONS
+    * 1:51 PM 11/29/2021 validated functional; init vers, adapted from demo code by Faris Malaeb [Understanding Get-ACL and AD Drive Output - PowerShell Community - devblogs.microsoft.com/](https://devblogs.microsoft.com/powershell-community/understanding-get-acl-and-ad-drive-output/)
+    .DESCRIPTION
+    resolve-ADRightsGuid() - Resolve a given get-ACL guid value to it's Name
+    Queries the AD: AD psdrive provider under the SchemaNamingContext & Extended-Rights, then loops past the set finding the matching guid, and returning the resolved guid name value
+    .PARAMETER  guid
+    AD Rights guid value to be looked up against AD SchemaNamingContext & Extended-Rights 
+    .EXAMPLE
+    $guidName =resolve-ADRightsGuid -guid 'bf9679c0-0de6-11d0-a285-00aa003049e2' 
+    Resolve the guid above to it's matching Name ('Self-Membership")
+    .EXAMPLE
+    # a random function that updates an ACL and  returns the acl as an object
+    $aclret = grant-ADGroupManagerUpdateMembership -User SAMACCTNAME -group 'ADGROUPNAME' -verbose -returnobject ; 
+    # resolve the returned acl guid ('ObjectType' prop) to it's matching name. 
+    $guidname = resolve-adrightsguid -guid ($aclret.ObjectType) -verbose ;
+    Example demoing a returned ACL guid, resolved to it's matching name
+    .LINK
+    https://devblogs.microsoft.com/powershell-community/understanding-get-acl-and-ad-drive-output/
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    #>
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("(lyn|bcc|spb|adl)ms6(4|5)(0|1).(china|global)\.ad\.toro\.com")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
+## [OutputType('bool')] # optional specified output type
+
+    [CmdletBinding()]
+    PARAM (
+        [parameter(Mandatory=$True,HelpMessage="AD Rights guid value to be looked up against AD SchemaNamingContext & Extended-Rights ")]
+        [guid]$guid
+    ) ;  
+    $verbose = ($VerbosePreference -eq "Continue") ; 
+
+    $error.clear() ;
+    TRY {
+        $GetADObjectParameter=@{   
+            SearchBase=(Get-ADRootDSE).SchemaNamingContext ;
+            LDAPFilter='(SchemaIDGUID=*)' ;
+            Properties=@("Name", "SchemaIDGUID") ;
+        } ;
+        write-verbose "Get-ADObject w`n$(($GetADObjectParameter |out-string).trim())" ;
+        $SchGUID=Get-ADObject @GetADObjectParameter ;
+
+        $ADObjExtPar=@{
+            SearchBase="CN=Extended-Rights,$((Get-ADRootDSE).ConfigurationNamingContext)" ;
+            LDAPFilter='(ObjectClass=ControlAccessRight)' ;
+            Properties=@("Name", "RightsGUID") ;
+        } ;
+        write-verbose "Get-ADObject w`n$(($ADObjExtPar|out-string).trim())" ;
+        $SchExtGUID=Get-ADObject @ADObjExtPar ;
+        # loop the returns to find the first match
+        foreach($rightsguid in @($SchGUID,$SchExtGUID)){
+            if($guidobj = $rightsguid| ?{$_.rightsguid -eq $guid.tostring()}){
+                $guidobj.name | write-output    ;
+                break ; 
+            } ;
+        } ;
+    } CATCH {
+        $ErrTrapd=$Error[0] ;
+        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #-=-record a STATUSWARN=-=-=-=-=-=-=
+        $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+        if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+        #-=-=-=-=-=-=-=-=
+        $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+    } ; 
+}
+
+#*------^ resolve-ADRightsGuid.ps1 ^------
+
 #*------v Sync-AD.ps1 v------
 Function Sync-AD { 
     # let's you trigger a replication between DCs. This function needs further tweaks for re-usability
@@ -1574,14 +2141,14 @@ Function Validate-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,load-ADMS,mount-ADForestDrives,Sync-AD,unmount-ADForestDrives,Validate-Password -Alias *
+Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,unmount-ADForestDrives,Validate-Password -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUlZEj7GjwdD86XmBNy5CHQySc
-# JeugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5cmYoiIErN1+3gLgKW+NlkJ3
+# SXygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1596,9 +2163,9 @@ Export-ModuleMember -Function get-ADForestDrives,Get-AdminInitials,get-ADRootSit
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSs7urm
-# SF8pV/0X6OMWmntSzDtxVjANBgkqhkiG9w0BAQEFAASBgHz/pLSr8Vfk72e+upIw
-# VN22d1ZDUo7yj2Qrbr+kPxLwpD3nazISh+ibGmI+I/cK6lBDl3taSJH330StyqeW
-# CJc4HhfJzOFkcRKJBF9po7KOLxgc/sop+XBF7n8vJBybq8ZInQhO/zD3YrbJGSbu
-# u0bBQbRnoF/aS6b4ZNtxmhnV
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBScSoQ3
+# zwK/HZSCvB5PlJ9v+61pTzANBgkqhkiG9w0BAQEFAASBgHo3iN6bkYkHUJ6/BCCe
+# lmUBA3QUgefnD8yZ025/wny+dN68NRp5HBHdkwucuVmPJVPaUVEKOwMIeaKKcx+C
+# lQJgsro+4sWk7lcno6ltAh5Acwx2BnsArRQVbvgEWFQb29cq2w1xLcsNjjb566XN
+# AP4SirOK3JyRXo9TDD6nphIQ
 # SIG # End signature block

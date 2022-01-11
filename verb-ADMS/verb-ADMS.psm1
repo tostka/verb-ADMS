@@ -1,11 +1,11 @@
-﻿# verb-adms.psm1
+﻿# verb-ADMS.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 1.1.1.0
+  Version     : 2.0.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -135,7 +135,7 @@ function find-SiteRoleOU {
     https://github.com/tostka/verb-adms
     #>
     #Requires -Modules ActiveDirectory
-    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("(lyn|bcc|spb|adl)ms6(4|5)(0|1).(china|global)\.ad\.toro\.com")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
     [OutputType('System.String')] # optional specified output type
     [CmdletBinding(DefaultParameterSetName='Site')]
     PARAM (
@@ -1346,7 +1346,7 @@ function grant-ADGroupManagerUpdateMembership {
     .LINK
     #>
     #Requires -Modules ActiveDirectory
-    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("(lyn|bcc|spb|adl)ms6(4|5)(0|1).(china|global)\.ad\.toro\.com")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
 
     [CmdletBinding()]
@@ -1917,7 +1917,7 @@ function resolve-ADRightsGuid {
     .LINK
     https://github.com/tostka/verb-ADMS
     #>
-    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("(lyn|bcc|spb|adl)ms6(4|5)(0|1).(china|global)\.ad\.toro\.com")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
 ## [OutputType('bool')] # optional specified output type
 
     [CmdletBinding()]
@@ -2147,8 +2147,8 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5cmYoiIErN1+3gLgKW+NlkJ3
-# SXygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUNJPOtveYeKwGGpr4MXgwUg+q
+# 34SgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2163,9 +2163,9 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBScSoQ3
-# zwK/HZSCvB5PlJ9v+61pTzANBgkqhkiG9w0BAQEFAASBgHo3iN6bkYkHUJ6/BCCe
-# lmUBA3QUgefnD8yZ025/wny+dN68NRp5HBHdkwucuVmPJVPaUVEKOwMIeaKKcx+C
-# lQJgsro+4sWk7lcno6ltAh5Acwx2BnsArRQVbvgEWFQb29cq2w1xLcsNjjb566XN
-# AP4SirOK3JyRXo9TDD6nphIQ
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSpSm9F
+# JxKzCfEW0hFa1wzuzJcYSTANBgkqhkiG9w0BAQEFAASBgGOaR0ebpRDhnmNkuDt6
+# cms3BbufyzhSICk6UPsLHid7cHNPi9nKNBEqSofifBVjoeDoeYUg6Bhc1rmmOK+M
+# rndSz72je1pygc0/Ea9wE8kcr/vI5GownyRFMk54CRoO4IAV9vaWFghecr4m6953
+# tRuTwwMEpblEX7F2s9sDX6XE
 # SIG # End signature block
