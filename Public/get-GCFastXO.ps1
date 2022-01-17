@@ -59,7 +59,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     get-aduser -id someuser -server $gcw ;
     Obtain a ForestWide root domain gc (which includes the necessary hard-coded port '3268') and can then can be queried for an object in *any subdomain* in the forest, though it has a small subset of all ADObject properties). Handy for locating the hosting subdomain, and suitable dc, so that the full ADObject can be queried targeting a suitable subdomain dc.
     .EXAMPLE
-    load-ADMS ;
+    $ADMTLoaded = load-ADMS ;
     if(!$global:ADPsDriveNames){
         $smsg = "(connecting X-Org AD PSDrives)" ;
         if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
