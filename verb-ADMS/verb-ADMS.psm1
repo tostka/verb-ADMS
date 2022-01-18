@@ -1,11 +1,11 @@
-﻿# verb-ADMS.psm1
+﻿# verb-adms.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 2.0.0.0
+  Version     : 2.0.1.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -756,7 +756,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
     get-aduser -id someuser -server $gcw ;
     Obtain a ForestWide root domain gc (which includes the necessary hard-coded port '3268') and can then can be queried for an object in *any subdomain* in the forest, though it has a small subset of all ADObject properties). Handy for locating the hosting subdomain, and suitable dc, so that the full ADObject can be queried targeting a suitable subdomain dc.
     .EXAMPLE
-    load-ADMS ;
+    $ADMTLoaded = load-ADMS ;
     if(!$global:ADPsDriveNames){
         $smsg = "(connecting X-Org AD PSDrives)" ;
         if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
@@ -2147,8 +2147,8 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUNJPOtveYeKwGGpr4MXgwUg+q
-# 34SgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUqm29d8NcHmq7GY2kEw2ggMAa
+# iRygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2163,9 +2163,9 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSpSm9F
-# JxKzCfEW0hFa1wzuzJcYSTANBgkqhkiG9w0BAQEFAASBgGOaR0ebpRDhnmNkuDt6
-# cms3BbufyzhSICk6UPsLHid7cHNPi9nKNBEqSofifBVjoeDoeYUg6Bhc1rmmOK+M
-# rndSz72je1pygc0/Ea9wE8kcr/vI5GownyRFMk54CRoO4IAV9vaWFghecr4m6953
-# tRuTwwMEpblEX7F2s9sDX6XE
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTy7FQ/
+# R22bObyT/guhtpx91MV9KTANBgkqhkiG9w0BAQEFAASBgBzPzGi6CWniSE8MU6Xg
+# oEOhPTXbGP55wctnikGLmmg9XTneOMcSOWBs0M8/FOb+G8ywWYeurzDNiuGoYz3K
+# ccRa0xgGfEFE2+RpqtHoJ4jyt2YaLXkKGYLINId6iCgv4sSLFXN2EBFQoyCP1JAn
+# DtSU0XLUp6+ydZDfZnIhYcaK
 # SIG # End signature block
