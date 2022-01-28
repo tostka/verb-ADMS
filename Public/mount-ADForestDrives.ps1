@@ -84,7 +84,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
     https://github.com/tostka/verb-adms
     #>
     #Requires -Version 3
-    #requires -PSEdition Desktop
+    ##requires -PSEdition Desktop
     #Requires -Modules ActiveDirectory
     #Requires -RunasAdministrator
     [CmdletBinding()]
