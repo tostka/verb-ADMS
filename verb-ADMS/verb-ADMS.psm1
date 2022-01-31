@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 2.1.0.0
+  Version     : 2.1.1.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -2063,13 +2063,7 @@ function test-AADUserSync {
     .LINK
     https://github.com/tostka/verb-AAD
     #>
-    ##Requires -Version 2.0
     #Requires -Version 3
-    ##requires -PSEdition Desktop
-    ##requires -PSEdition Core
-    ##Requires -PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
-    ##Requires -Modules ActiveDirectory, AzureAD, MSOnline, ExchangeOnlineManagement, MicrosoftTeams, SkypeOnlineConnector, Lync,  verb-AAD, verb-ADMS, verb-Auth, verb-Azure, VERB-CCMS, verb-Desktop, verb-dev, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Mods, verb-Network, verb-L13, verb-SOL, verb-Teams, verb-Text, verb-logging
-    ##Requires -Modules ActiveDirectory, AzureAD, MSOnline, ExchangeOnlineManagement, verb-AAD, verb-ADMS, verb-Auth, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Network, verb-Text
     #Requires -Modules MSOnline, verb-AAD, ActiveDirectory, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Network, verb-Text
     #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
@@ -2444,15 +2438,7 @@ function test-ADUserEmployeeNumber {
     .LINK
     https://github.com/tostka/verb-ADMS
     #>
-    ##Requires -Version 2.0
     #Requires -Version 3
-    ##requires -PSEdition Desktop
-    ##requires -PSEdition Core
-    ##Requires -PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
-    ##Requires -Modules ActiveDirectory, AzureAD, MSOnline, ExchangeOnlineManagement, MicrosoftTeams, SkypeOnlineConnector, Lync,  verb-AAD, verb-ADMS, verb-Auth, verb-Azure, VERB-CCMS, verb-Desktop, verb-dev, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Mods, verb-Network, verb-L13, verb-SOL, verb-Teams, verb-Text, verb-logging
-    ##Requires -Modules ActiveDirectory, AzureAD, MSOnline, ExchangeOnlineManagement, verb-AAD, verb-ADMS, verb-Auth, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Network, verb-Text
-    ##Requires -Modules MSOnline, verb-AAD, ActiveDirectory, verb-ADMS, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Network, verb-Text
-    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     [OutputType('bool')] # optional specified output type
     [CmdletBinding()]
@@ -2738,8 +2724,8 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUdtTS2tCXqeOz5BIVIfKfajcD
-# S6egggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUV31dJdKbRLcBIHz/jqUzfkoC
+# 0qKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2754,9 +2740,9 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSf728U
-# Ziw+p/Pe0KqNRz313hbSSTANBgkqhkiG9w0BAQEFAASBgJNFKJxgfCmBRZFJcALM
-# S4a1pytWgRIcQ46OzKxp0S00H5i/ZPqOqXC2e3K1uNazPgcL6B6k8rok1dwLI3a4
-# nvdEvS8G4X2vEMp4QkqBylJiGYB5K+oQUjlLSqdvDylo4Ze8pIYDRiZ3BhlZZL+z
-# U4O6mr9S0Rg5m+wgV6+hbNMt
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT9dhm8
+# /Q0eyDZLihAqZg64DVlQjzANBgkqhkiG9w0BAQEFAASBgGRIPxhNs+gjIZ00k+GR
+# hGvvdIne/jygj0lQrQ9h1uJPts596V3QcycBXfgxBYiv0p9m6QUqe3iAJN9NPe/P
+# 2523OPpz2UuIDQe62Z3l+l8UYA9n45mx9mNAceI02kStvIDzr1dNHMNRP3qVzxuX
+# y9jzxOsXSmJQSHjenpe3QHhm
 # SIG # End signature block
