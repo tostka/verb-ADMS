@@ -1,6 +1,4 @@
-﻿# test-AADUserSync.ps1
-
-#*------v Function test-AADUserSync v------
+﻿#*------v test-AADUserSync.ps1 v------
 function test-AADUserSync {
     <#
     .SYNOPSIS
@@ -20,6 +18,7 @@ function test-AADUserSync {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 1:08 PM 1/31/2022 trimmed requires, dropping verb-exo & verb-ex2010 - seemed to be triggering nested limit shrug.
     * 3:37 PM 1/28/2022 fixed error, due to un-instantiated $rpt (needed to be an explicit array, forgot to declare at top). 
     * 3:00 PM 1/26/2022 init
     .DESCRIPTION
@@ -78,7 +77,7 @@ function test-AADUserSync {
     https://github.com/tostka/verb-AAD
     #>
     #Requires -Version 3
-    #Requires -Modules MSOnline, verb-AAD, ActiveDirectory, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Network, verb-Text
+    #Requires -Modules MSOnline, verb-AAD, ActiveDirectory, verb-IO, verb-logging, verb-Network, verb-Text
     #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
@@ -261,7 +260,7 @@ function test-AADUserSync {
                             }
                             $rgxEmployeeNumberSamAcctSpaces {
                                 # '^[\sA-Za-z0-9]{7,6}$' # 6-7 digit alphanum w spaces -> likely is a samacctname in Employeenumber w leading/trailing \s (trim it)
-                                # shouldn't get here (stip ☝🏻 ) but leave it defined.
+                                # shouldn't get here (stip ??? ) but leave it defined.
                                 $potEmployeeNumber = $potEmployeeNumber.trim() ; # retrim, see if it will clear
                                 $filter = "samaccountname -eq '$($potEmployeeNumber)'" ;
                                 $pltGADU=[ordered]@{filter= $filter ;Properties = 'DisplayName' ; ErrorAction= 'STOP' } ; 
@@ -393,5 +392,6 @@ function test-AADUserSync {
             $Rpt.isAADUserSynced | write-output ; 
         }  
     } ;  # END-E
-} ; 
-#*------^ END Function test-AADUserSync ^------
+}
+
+#*------^ test-AADUserSync.ps1 ^------
