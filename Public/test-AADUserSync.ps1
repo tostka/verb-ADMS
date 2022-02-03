@@ -18,7 +18,7 @@ function test-AADUserSync {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 1:08 PM 1/31/2022 trimmed requires, dropping verb-exo & verb-ex2010 - seemed to be triggering nested limit shrug.
+    * 12:16 PM 2/3/2022 requires block was triggering nesting error, so stripped back from abso minimum
     * 3:37 PM 1/28/2022 fixed error, due to un-instantiated $rpt (needed to be an explicit array, forgot to declare at top). 
     * 3:00 PM 1/26/2022 init
     .DESCRIPTION
@@ -77,7 +77,7 @@ function test-AADUserSync {
     https://github.com/tostka/verb-AAD
     #>
     #Requires -Version 3
-    #Requires -Modules MSOnline, verb-AAD, ActiveDirectory, verb-IO, verb-logging, verb-Network, verb-Text
+    #Requires -Modules MSOnline, verb-AAD, ActiveDirectory
     #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type

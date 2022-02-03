@@ -12,7 +12,7 @@
 RootModule = 'verb-ADMS.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.1.1'
+ModuleVersion = '2.1.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'ActiveDirectory PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','get-DCLocal','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','test-AADUserSync','test-ADUserEmployeeNumber','unmount-ADForestDrives','Validate-Password')
+FunctionsToExport = @('find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','get-ADUserViaUPN','get-DCLocal','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','test-AADUserSync','test-ADUserEmployeeNumber','unmount-ADForestDrives','Validate-Password')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5DK1Bz5/AcKLYX76EC16f0dp
-# paygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU73j+yRQL+lmZXEwYhyq7d79Y
+# /U+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT+t3wQ
-# l63Sky5MzBLUM9LYnA9v8TANBgkqhkiG9w0BAQEFAASBgCG+zqOUzyI/57J/mGmg
-# 3pvz2oNR3B8P3rfm0U/eXkNLStlrJknwP2doTCZoB9s4tubYnxIbvrkNia9q+Fb9
-# Nk+niMicRazsiedcLglQExEy4YLYxf/2/RtjlF+h6cNf23AnWewDke20KmKtzZSC
-# arK9wwFRjnMFcsTBVDmeOOJf
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTeT+s6
+# gQvgnSRYWPQVRmH/uk1qSDANBgkqhkiG9w0BAQEFAASBgBKY12ue1vPhucqx8eL/
+# zRNl1IpBbDzsr/AEQoUfxdg+Xus3QaR4R9IY7M6hwDmJ1yiMH66W4o5DOdU5tWON
+# gpwaszLrxnrER/Ua93/F62VQ/FP4+rVjIxUstt3WMjuamCMODNdp2o+KO0Z+ceXz
+# 1rw4PxHL+in8umQnRWpIjK09
 # SIG # End signature block
