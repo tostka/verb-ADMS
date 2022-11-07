@@ -1,4 +1,4 @@
-#*------v Function find-SiteRoleOU v------
+﻿#*------v Function find-SiteRoleOU v------
 function find-SiteRoleOU {
     <#
     .SYNOPSIS

@@ -1,4 +1,4 @@
-# 11:51 AM 5/6/2019 Sync-AD():moved from tsksid-incl-ServerApp.ps1
+﻿# 11:51 AM 5/6/2019 Sync-AD():moved from tsksid-incl-ServerApp.ps1
 #*------v Function Sync-AD v------
 Function Sync-AD { 
     # let's you trigger a replication between DCs. This function needs further tweaks for re-usability

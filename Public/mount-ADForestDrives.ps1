@@ -1,4 +1,4 @@
-#*------v mount-ADForestDrives.ps1 v------
+﻿#*------v mount-ADForestDrives.ps1 v------
 function mount-ADForestDrives {
     <#
     .SYNOPSIS

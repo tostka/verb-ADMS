@@ -1,4 +1,4 @@
-#*------v Function Validate-Password v------
+﻿#*------v Function Validate-Password v------
 Function Validate-Password{
     <#
     .SYNOPSIS

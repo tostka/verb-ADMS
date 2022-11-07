@@ -1,4 +1,4 @@
-#*------v Function get-ADSiteLocal v------
+﻿#*------v Function get-ADSiteLocal v------
 function get-ADSiteLocal {
     <#
     .SYNOPSIS

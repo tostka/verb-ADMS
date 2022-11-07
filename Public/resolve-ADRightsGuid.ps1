@@ -1,4 +1,4 @@
-
+﻿
 #*------v Function resolve-ADRightsGuid v------
 function resolve-ADRightsGuid {
     <#

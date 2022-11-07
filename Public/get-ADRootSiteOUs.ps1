@@ -1,4 +1,4 @@
-#*------v Function get-ADRootSiteOUs v------
+﻿#*------v Function get-ADRootSiteOUs v------
 function get-ADRootSiteOUs {
     <#
     .SYNOPSIS

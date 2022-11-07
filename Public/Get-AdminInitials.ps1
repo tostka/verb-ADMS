@@ -1,4 +1,4 @@
-#*------v Function Get-AdminInitials v------
+﻿#*------v Function Get-AdminInitials v------
 function Get-AdminInitials {
     <#
     .SYNOPSIS

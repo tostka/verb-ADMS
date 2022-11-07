@@ -1,4 +1,4 @@
-#*------v Function grant-ADGroupManagerUpdateMembership v------
+﻿#*------v Function grant-ADGroupManagerUpdateMembership v------
 function grant-ADGroupManagerUpdateMembership {
     <#
     .SYNOPSIS
