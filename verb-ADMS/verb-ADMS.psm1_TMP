@@ -1,11 +1,11 @@
-# verb-adms.psm1
+﻿# verb-adms.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 2.1.1.0
+  Version     : 2.2.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -67,10 +67,12 @@
   #>
 
 
-$script:ModuleRoot = $PSScriptRoot ;
-$script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
+    $script:ModuleRoot = $PSScriptRoot ;
+    $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
+    $runningInVsCode = $env:TERM_PROGRAM -eq 'vscode' ;
 
 #*======v FUNCTIONS v======
+
 
 
 
@@ -337,6 +339,7 @@ function find-SiteRoleOU {
 
 #*------^ find-SiteRoleOU.ps1 ^------
 
+
 #*------v get-ADForestDrives.ps1 v------
 function get-ADForestDrives {
     <#
@@ -421,6 +424,7 @@ function get-ADForestDrives {
 
 #*------^ get-ADForestDrives.ps1 ^------
 
+
 #*------v Get-AdminInitials.ps1 v------
 function Get-AdminInitials {
     <#
@@ -457,6 +461,7 @@ function Get-AdminInitials {
 }
 
 #*------^ Get-AdminInitials.ps1 ^------
+
 
 #*------v get-ADRootSiteOUs.ps1 v------
 function get-ADRootSiteOUs {
@@ -539,6 +544,130 @@ function get-ADRootSiteOUs {
 }
 
 #*------^ get-ADRootSiteOUs.ps1 ^------
+
+
+#*------v get-ADSiteLocal.ps1 v------
+function get-ADSiteLocal {
+    <#
+    .SYNOPSIS
+    get-ADSiteLocal.ps1 - Return the local computer's AD Site name.
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2021-08-16
+    FileName    : get-ADSiteLocal.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,ADSite,Computer
+    AddedCredit : 
+    AddedWebsite: 
+    AddedTwitter: 
+    REVISIONS
+    * 10:03 AM 9/14/2022 init
+    .DESCRIPTION
+    get-ADSiteLocal.ps1 - Return the local computer's AD Site name
+    Simple wrap of the 
+    [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
+    for local machine, or 'nltest /server:$Item /dsgetsite 2' for remote machines
+    .PARAMETER Name
+    Array of System Names to test (defaults to local machine)[-Name SomeBox]
+    .EXAMPLE
+    $ADSite = get-ADSiteLocal 
+    Return local computer ADSite name
+    .EXAMPLE
+    $ADSite = get-ADSiteLocal -Name somebox
+    Return remote computer ADSite name
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding()]
+    PARAM (
+        [parameter(ValueFromPipeline=$true,HelpMessage="Array of System Names to test (defaults to local machine)[-Name SomeBox]")]
+        [string[]]$Name = $env:COMPUTERNAME
+    )
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+        if ($PSCmdlet.MyInvocation.ExpectingInput) {
+            write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
+        } else {
+            #write-verbose "Data received from parameter input: '$($InputObject)'" ; 
+            write-verbose "(non-pipeline - param - input)" ; 
+        } ; 
+    } ;  # BEG-E
+    PROCESS {
+        foreach($item in $Name){
+            
+            if($item -eq $env:ComputerName){
+                
+               $bNonWin = $false ; 
+                if( (get-variable isWindows -ea 0) -AND $isWindows){
+                    write-verbose "(`$isWindows:$($IsWindows))" ; 
+                }elseif( (get-variable isWindows -ea 0) -AND -not($isWindows)){
+                    write-verbose "(`$isWindows:$($IsWindows))" ; 
+                    $smsg = "$($env:computername) IS *NOT* A WINDOWS COMPUTER!`nThis command is unsupported without Windows..." ; 
+                    write-warning $smsg 
+                    throw $smsg ; 
+                    Break ; 
+                } else{
+                    switch ([System.Environment]::OSVersion.Platform){
+                        'Win32NT' {
+                            write-verbose "$($env:computername) detects as a windows computer)" ; 
+                            $bNonWin = $false ; 
+                        }
+                        default{
+                          # Linux/Unix returns 'Unix'
+                          $bNonWin = $true ; 
+                        } ;
+                    } ; 
+                } ; 
+                if($bNonWin){
+                    $smsg = "$($env:computername) IS *NOT* A WINDOWS COMPUTER!`nThis command is unsupported without Windows..." ; 
+                    write-warning $smsg 
+                    throw $smsg ; 
+                    Break ; 
+                } ; 
+                write-host "(retrieving local computer AD Site name...)" ; 
+                TRY{
+                    [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name | write-output ; 
+                } CATCH {$smsg = $_.Exception.Message ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    Continue ;
+                } ;
+            
+            } else { 
+                # there's fancier ways to do it, but the nltest works across revs
+                if(get-command nltest){
+                    write-verbose "(using legacy nltest /server:$($Item) /dsgetsite 2...)" ; 
+                    $site = nltest /server:$Item /dsgetsite 2>$null
+                    if($LASTEXITCODE -eq 0){ $site[0] | write-output } 
+                    else {
+                        $smsg = "nltest non-zero `$LASTEXITCODE:$($LASTEXITCODE): UNABLE to determine remote machine's ADSite!" ; 
+                        write-warning $smsg 
+                        throw $smsg ; 
+                        Continue ; 
+                    } ; 
+                } else {
+                    $smsg = "UNABLE to locate local nltest dependancy!" ; 
+                    write-warning $smsg 
+                    throw $smsg ; 
+                    Break ; 
+                } ;  ; 
+            } ;  
+        } ;  # loop-E
+        
+    } ;  # PROC-E
+    END {
+        write-verbose "(get-ADSiteLocal:End)" ; 
+    } ; 
+}
+
+#*------^ get-ADSiteLocal.ps1 ^------
+
 
 #*------v get-ADUserViaUPN.ps1 v------
 function get-ADUserViaUPN {
@@ -867,6 +996,7 @@ function get-ADUserViaUPN {
 
 #*------^ get-ADUserViaUPN.ps1 ^------
 
+
 #*------v get-DCLocal.ps1 v------
 Function get-DCLocal {
     <#
@@ -931,6 +1061,7 @@ Function get-DCLocal {
 }
 
 #*------^ get-DCLocal.ps1 ^------
+
 
 #*------v get-GCFast.ps1 v------
 function get-GCFast {
@@ -1021,6 +1152,7 @@ function get-GCFast {
 }
 
 #*------^ get-GCFast.ps1 ^------
+
 
 #*------v get-GCFastXO.ps1 v------
 Function get-GCFastXO {
@@ -1495,6 +1627,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
 
 #*------^ get-GCFastXO.ps1 ^------
 
+
 #*------v get-GCLocal.ps1 v------
 Function get-GCLocal {
     <#
@@ -1558,6 +1691,7 @@ Function get-GCLocal {
 }
 
 #*------^ get-GCLocal.ps1 ^------
+
 
 #*------v get-SiteMbxOU.ps1 v------
 function get-SiteMbxOU {
@@ -1630,6 +1764,7 @@ function get-SiteMbxOU {
 }
 
 #*------^ get-SiteMbxOU.ps1 ^------
+
 
 #*------v grant-ADGroupManagerUpdateMembership.ps1 v------
 function grant-ADGroupManagerUpdateMembership {
@@ -1842,6 +1977,7 @@ function grant-ADGroupManagerUpdateMembership {
 
 #*------^ grant-ADGroupManagerUpdateMembership.ps1 ^------
 
+
 #*------v load-ADMS.ps1 v------
 function load-ADMS {
     <#
@@ -1914,6 +2050,7 @@ function load-ADMS {
 }
 
 #*------^ load-ADMS.ps1 ^------
+
 
 #*------v mount-ADForestDrives.ps1 v------
 function mount-ADForestDrives {
@@ -2204,6 +2341,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
 
 #*------^ mount-ADForestDrives.ps1 ^------
 
+
 #*------v resolve-ADRightsGuid.ps1 v------
 function resolve-ADRightsGuid {
     <#
@@ -2297,6 +2435,7 @@ function resolve-ADRightsGuid {
 
 #*------^ resolve-ADRightsGuid.ps1 ^------
 
+
 #*------v Sync-AD.ps1 v------
 Function Sync-AD { 
     # let's you trigger a replication between DCs. This function needs further tweaks for re-usability
@@ -2312,6 +2451,7 @@ Function Sync-AD {
 }
 
 #*------^ Sync-AD.ps1 ^------
+
 
 #*------v test-AADUserSync.ps1 v------
 function test-AADUserSync {
@@ -2711,6 +2851,7 @@ function test-AADUserSync {
 
 #*------^ test-AADUserSync.ps1 ^------
 
+
 #*------v test-ADUserEmployeeNumber.ps1 v------
 function test-ADUserEmployeeNumber {
     <#
@@ -2891,6 +3032,7 @@ function test-ADUserEmployeeNumber {
 
 #*------^ test-ADUserEmployeeNumber.ps1 ^------
 
+
 #*------v umount-ADForestDrives.ps1 v------
 function unmount-ADForestDrives {
     <#
@@ -2981,6 +3123,7 @@ function unmount-ADForestDrives {
 
 #*------^ umount-ADForestDrives.ps1 ^------
 
+
 #*------v Validate-Password.ps1 v------
 Function Validate-Password{
     <#
@@ -3044,7 +3187,10 @@ Function Validate-Password{
 
 #*------^ Validate-Password.ps1 ^------
 
+
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-ADUserViaUPN,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,Validate-Password -Alias *
+Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-ADSiteLocal,get-ADUserViaUPN,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,Validate-Password -Alias *
+
+
 
