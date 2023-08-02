@@ -12,7 +12,7 @@
 RootModule = 'verb-ADMS.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.2.0'
+ModuleVersion = '3.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -148,5 +148,7 @@ PrivateData = @{
 # Nk+niMicRazsiedcLglQExEy4YLYxf/2/RtjlF+h6cNf23AnWewDke20KmKtzZSC
 # arK9wwFRjnMFcsTBVDmeOOJf
 # SIG # End signature block
+
+
 
 

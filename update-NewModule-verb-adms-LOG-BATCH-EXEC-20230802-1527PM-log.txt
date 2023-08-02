@@ -1,0 +1,454 @@
+﻿2023-08-02 15:27:57 INFO:  : #*======v VERB-dev.psm1:verb-adms v======
+2023-08-02 15:27:59 INFO:  : NON-Republish pass detected:
+MERGE parm specified as well:`n-Merge Public|Internal|Classes include subdirs module content into updated .psm1
+-Sign updated files.
+-Uninstall/Remove existing profile module
+-Copy new module to profile
+-Confirm: Get-Module -ListAvailable
+-Check/Update existing Psd1 Version
+-Publish-Module
+-Remove existing installed profile module
+-Test Install-Module
+-Test Import-Module
+2023-08-02 15:27:59 INFO:  : -Merge specified...
+2023-08-02 15:27:59 INFO:  : ConvertTo-ModuleMergedTDO w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+ModuleName                     verb-adms                                                                                                   
+ModuleSourcePath               {c:\sc\verb-adms\Public, c:\sc\verb-adms\Internal}                                                          
+ModuleDestinationPath          c:\sc\verb-adms\verb-adms                                                                                   
+RequiredVersion                3.0.0                                                                                                       
+LogSpec                        {logging, logfile, transcript}                                                                              
+NoAliasExport                                                                                                                              
+ErrorAction                    Stop                                                                                                        
+showdebug                      False                                                                                                       
+whatif                         False
+2023-08-02 15:27:59 INFO:  : ConvertTo-ModuleMergedTDO w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+ModuleName                     verb-adms                                                                                                   
+ModuleSourcePath               {c:\sc\verb-adms\Public, c:\sc\verb-adms\Internal}                                                          
+ModuleDestinationPath          c:\sc\verb-adms\verb-adms                                                                                   
+RequiredVersion                3.0.0                                                                                                       
+LogSpec                        {logging, logfile, transcript}                                                                              
+NoAliasExport                                                                                                                              
+ErrorAction                    Stop                                                                                                        
+showdebug                      False                                                                                                       
+whatif                         False
+2023-08-02 15:28:00 INFO:  : (NON-dyn psm1 detected - purging existing non-CBH content...)
+2023-08-02 15:28:00 INFO:  : Initialize-PSModuleDirectories w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+ModuleSourcePath               {c:\sc\verb-adms\Public, c:\sc\verb-adms\Internal}                                                          
+ModuleDestinationPath          c:\sc\verb-adms\verb-adms                                                                                   
+ErrorAction                    Stop                                                                                                        
+whatif                         False
+2023-08-02 15:28:00 INFO:  : 
+#*------v (1/2):C:\sc\verb-adms\Public v------
+2023-08-02 15:28:00 INFO:  : Processing 20 $ComponentScripts files through Remove-AuthenticodeSignature...
+2023-08-02 15:28:01 INFO:  : Processing (1/20):C:\sc\verb-adms\Public\find-SiteRoleOU.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (2/20):C:\sc\verb-adms\Public\get-ADForestDrives.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (3/20):C:\sc\verb-adms\Public\Get-AdminInitials.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (4/20):C:\sc\verb-adms\Public\get-ADRootSiteOUs.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (5/20):C:\sc\verb-adms\Public\get-ADSiteLocal.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (6/20):C:\sc\verb-adms\Public\get-ADUserViaUPN.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (7/20):C:\sc\verb-adms\Public\get-DCLocal.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (8/20):C:\sc\verb-adms\Public\get-GCFast.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (9/20):C:\sc\verb-adms\Public\get-GCFastXO.ps1...
+2023-08-02 15:28:01 INFO:  : Processing (10/20):C:\sc\verb-adms\Public\get-GCLocal.ps1...
+2023-08-02 15:28:02 INFO:  : Processing (11/20):C:\sc\verb-adms\Public\get-SiteMbxOU.ps1...
+2023-08-02 15:28:02 INFO:  : Processing (12/20):C:\sc\verb-adms\Public\grant-ADGroupManagerUpdateMembership.ps1...
+2023-08-02 15:28:02 INFO:  : Processing (13/20):C:\sc\verb-adms\Public\load-ADMS.ps1...
+2023-08-02 15:28:02 INFO:  : Processing (14/20):C:\sc\verb-adms\Public\mount-ADForestDrives.ps1...
+2023-08-02 15:28:02 INFO:  : Processing (15/20):C:\sc\verb-adms\Public\resolve-ADRightsGuid.ps1...
+2023-08-02 15:28:02 INFO:  : Processing (16/20):C:\sc\verb-adms\Public\Sync-AD.ps1...
+2023-08-02 15:28:02 INFO:  : Processing (17/20):C:\sc\verb-adms\Public\test-AADUserSync.ps1...
+2023-08-02 15:28:02 INFO:  : Processing (18/20):C:\sc\verb-adms\Public\test-ADUserEmployeeNumber.ps1...
+2023-08-02 15:28:03 INFO:  : Processing (19/20):C:\sc\verb-adms\Public\umount-ADForestDrives.ps1...
+2023-08-02 15:28:03 INFO:  : Processing (20/20):C:\sc\verb-adms\Public\Validate-Password.ps1...
+2023-08-02 15:28:03 INFO:  : 
+#*------v (2/2):C:\sc\verb-adms\Internal v------
+2023-08-02 15:28:03 INFO:  : Processing 0 $ComponentScripts files through Remove-AuthenticodeSignature...
+2023-08-02 15:28:03 INFO:  : (Updating Psm1 Export-ModuleMember -Function to reflect Public modules)
+2023-08-02 15:28:03 INFO:  : Adding:FooterBlock...
+2023-08-02 15:28:03 INFO:  : confirm-ModuleBuildSync w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+ModPsdPath                     c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP                                                                
+RequiredVersion                3.0.0                                                                                                       
+NoTest                         True                                                                                                        
+whatif                         False                                                                                                       
+verbose                        False
+2023-08-02 15:28:03 INFO:  : (test-path confirms $ModPsm1 & $ModTestPs1)
+2023-08-02 15:28:03 INFO:  : Import-PowerShellDataFile w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP                                                                
+ErrorAction                    Stop                                                                                                        
+verbose                        False
+2023-08-02 15:28:03 INFO:  : (resolved Module attributes:
+$ModuleName:	verb-adms
+$ModRoot:	c:\sc\verb-adms
+$ModPsd1:	c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP
+$ModPsm1:	c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP
+$ModTestPs1:	c:\sc\verb-adms\Tests\verb-adms.tests.ps1
+$psd1Vers:	2.2.0
+$psd1guid:	1fda24ae-c9e2-4154-b58d-4910731be1a4)
+2023-08-02 15:28:03 INFO:  : confirm-ModulePsd1Version w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP                                                                
+RequiredVersion                3.0.0                                                                                                       
+whatif                         False                                                                                                       
+verbose                        False
+2023-08-02 15:28:03 WARNING:  : In:c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP
+Version present:(2.2.0)
+*does not* properly match:3.0.0
+FORCING MATCHING UPDATE!
+2023-08-02 15:28:04 INFO:  : $objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Version                        3.0.0                                                                                                       
+Valid                          False
+2023-08-02 15:28:04 INFO:  : (SET:$objReport.Valid = $true ;)
+2023-08-02 15:28:04 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Version                        3.0.0                                                                                                       
+Valid                          True
+2023-08-02 15:28:04 INFO:  : #*======^ confirm-ModulePsd1Version: c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP ^======
+2023-08-02 15:28:04 INFO:  : (confirm-ModulePsd1Version:Success)
+2023-08-02 15:28:04 INFO:  : confirm-ModulePsm1Version w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP                                                                
+RequiredVersion                3.0.0                                                                                                       
+whatif                         False                                                                                                       
+verbose                        False
+2023-08-02 15:28:04 WARNING:  : In:c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP
+Version present:(2.2.0)
+*does not* properly match:3.0.0
+FORCING MATCHING UPDATE!
+2023-08-02 15:28:05 INFO:  : $objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Version                        3.0.0                                                                                                       
+Valid                          False
+2023-08-02 15:28:05 INFO:  : (SET:$objReport.Valid = $true ;)
+2023-08-02 15:28:05 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Version                        3.0.0                                                                                                       
+Valid                          True
+2023-08-02 15:28:05 INFO:  : #*======^ confirm-ModulePsm1Version: c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP ^======
+2023-08-02 15:28:05 INFO:  : (confirm-ModulePsm1Version:Success)
+2023-08-02 15:28:05 INFO:  : (-NoTest: skipping confirm-ModuleTestPs1Guid)
+2023-08-02 15:28:05 INFO:  : $objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Manifest                       c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP                                                                
+Module                         c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP                                                                
+Pester                         (SKIPPED)                                                                                                   
+Guid                           (SKIPPED)                                                                                                   
+Version                        3.0.0                                                                                                       
+Valid                          False
+2023-08-02 15:28:05 INFO:  : (SET:$objReport.Valid = $true ;)
+2023-08-02 15:28:05 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Manifest                       c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP                                                                
+Module                         c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP                                                                
+Pester                         (SKIPPED)                                                                                                   
+Guid                           (SKIPPED)                                                                                                   
+Version                        3.0.0                                                                                                       
+Valid                          True
+2023-08-02 15:28:05 INFO:  : #*======^ confirm-ModuleBuildSync:  ^======
+2023-08-02 15:28:05 INFO:  : (confirm-ModuleBuildSync:Success)
+2023-08-02 15:28:05 INFO:  : Test-ModuleTMPFiles w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+ModuleNamePSM1Path             c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP                                                                
+verbose                        False
+2023-08-02 15:28:05 INFO:  : #*======v Test-ModuleTMPFiles: c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP v======
+2023-08-02 15:28:05 INFO:  : 
+Psm1:c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP
+Psd1:c:\sc\verb-adms\verb-adms\verb-adms.psd1_TMP
+2023-08-02 15:28:05 INFO:  : Test-ModuleManifest:PASSED
+2023-08-02 15:28:05 INFO:  : Creating Testable c:\sc\verb-adms\verb-adms\dace7db0-22c9-4a63-bf55-7dafc56912c0.psm1
+ to validate c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP will Import-Module
+2023-08-02 15:28:05 INFO:  : Ipmo: PASSED
+2023-08-02 15:28:05 INFO:  : (remove-module -name c:\sc\verb-adms\verb-adms\dace7db0-22c9-4a63-bf55-7dafc56912c0.psm1 -force)
+2023-08-02 15:28:05 INFO:  : (remove-item -path c:\sc\verb-adms\verb-adms\dace7db0-22c9-4a63-bf55-7dafc56912c0.psm1 -ErrorAction SilentlyContinue ; 
+2023-08-02 15:28:05 INFO:  : (remove-item -path c:\sc\verb-adms\verb-adms\dace7db0-22c9-4a63-bf55-7dafc56912c0.psd1 -ErrorAction SilentlyContinue ; 
+2023-08-02 15:28:05 INFO:  : $objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Manifest                       dace7db0-22c9-4a63-bf55-7dafc56912c0                                                                        
+Module                         dace7db0-22c9-4a63-bf55-7dafc56912c0                                                                        
+Valid                          False
+2023-08-02 15:28:05 INFO:  : (SET:$objReport.Valid = $true ;)
+2023-08-02 15:28:05 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Manifest                       dace7db0-22c9-4a63-bf55-7dafc56912c0                                                                        
+Module                         dace7db0-22c9-4a63-bf55-7dafc56912c0                                                                        
+Valid                          True
+2023-08-02 15:28:06 INFO:  : #*======^ Test-ModuleTMPFiles: c:\sc\verb-adms\verb-adms\verb-adms.psm1_TMP ^======
+2023-08-02 15:28:06 INFO:  : #*======^ ConvertTo-ModuleMergedTDO: ^======
+2023-08-02 15:28:06 INFO:  : (Test-ModuleManifest:PASSED)
+2023-08-02 15:28:06 INFO:  : Checking sync of Psd1 module guid to the Pester Test Script: c:\sc\verb-adms\Tests\verb-adms.tests.ps1
+2023-08-02 15:28:06 INFO:  : confirm-ModuleBuildSync w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+ModPsdPath                     C:\sc\verb-adms\verb-adms\verb-adms.psd1                                                                    
+RequiredVersion                3.0.0                                                                                                       
+whatif                         False                                                                                                       
+verbose                        False
+2023-08-02 15:28:06 INFO:  : (test-path confirms $ModPsm1 & $ModTestPs1)
+2023-08-02 15:28:06 INFO:  : Import-PowerShellDataFile w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           C:\sc\verb-adms\verb-adms\verb-adms.psd1                                                                    
+ErrorAction                    Stop                                                                                                        
+verbose                        False
+2023-08-02 15:28:06 INFO:  : (resolved Module attributes:
+$ModuleName:	verb-adms
+$ModRoot:	c:\sc\verb-adms
+$ModPsd1:	C:\sc\verb-adms\verb-adms\verb-adms.psd1
+$ModPsm1:	C:\sc\verb-adms\verb-adms\verb-adms.psm1
+$ModTestPs1:	c:\sc\verb-adms\Tests\verb-adms.tests.ps1
+$psd1Vers:	3.0.0
+$psd1guid:	1fda24ae-c9e2-4154-b58d-4910731be1a4)
+2023-08-02 15:28:06 INFO:  : confirm-ModulePsd1Version w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           C:\sc\verb-adms\verb-adms\verb-adms.psd1                                                                    
+RequiredVersion                3.0.0                                                                                                       
+whatif                         False                                                                                                       
+verbose                        False
+2023-08-02 15:28:06 INFO:  : (Version already updated to match)
+2023-08-02 15:28:06 INFO:  : $objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Version                        3.0.0                                                                                                       
+Valid                          False
+2023-08-02 15:28:06 INFO:  : (SET:$objReport.Valid = $true ;)
+2023-08-02 15:28:06 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Version                        3.0.0                                                                                                       
+Valid                          True
+2023-08-02 15:28:06 INFO:  : #*======^ confirm-ModulePsd1Version: C:\sc\verb-adms\verb-adms\verb-adms.psd1 ^======
+2023-08-02 15:28:06 INFO:  : (confirm-ModulePsd1Version:Success)
+2023-08-02 15:28:06 INFO:  : confirm-ModulePsm1Version w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           C:\sc\verb-adms\verb-adms\verb-adms.psm1                                                                    
+RequiredVersion                3.0.0                                                                                                       
+whatif                         False                                                                                                       
+verbose                        False
+2023-08-02 15:28:06 INFO:  : (Version already updated to match)
+2023-08-02 15:28:06 INFO:  : $objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Version                        3.0.0                                                                                                       
+Valid                          False
+2023-08-02 15:28:06 INFO:  : (SET:$objReport.Valid = $true ;)
+2023-08-02 15:28:06 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Version                        3.0.0                                                                                                       
+Valid                          True
+2023-08-02 15:28:07 INFO:  : #*======^ confirm-ModulePsm1Version: C:\sc\verb-adms\verb-adms\verb-adms.psm1 ^======
+2023-08-02 15:28:07 INFO:  : (confirm-ModulePsm1Version:Success)
+2023-08-02 15:28:07 INFO:  : Checking sync of Psd1 module guid to the Pester Test Script: c:\sc\verb-adms\Tests\verb-adms.tests.ps1
+2023-08-02 15:28:07 INFO:  : confirm-ModuleTestPs1Guid w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           c:\sc\verb-adms\Tests\verb-adms.tests.ps1                                                                   
+RequiredGuid                   1fda24ae-c9e2-4154-b58d-4910731be1a4                                                                        
+whatif                         False                                                                                                       
+verbose                        False
+2023-08-02 15:28:07 INFO:  : (Guid  already updated to match)
+2023-08-02 15:28:07 INFO:  : $objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Guid                           1fda24ae-c9e2-4154-b58d-4910731be1a4                                                                        
+Valid                          False
+2023-08-02 15:28:07 INFO:  : (SET:$objReport.Valid = $true ;)
+2023-08-02 15:28:07 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Guid                           1fda24ae-c9e2-4154-b58d-4910731be1a4                                                                        
+Valid                          True
+2023-08-02 15:28:07 INFO:  : (confirm-ModuleTestPs1Guid:Success)
+2023-08-02 15:28:07 INFO:  : $objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Manifest                       C:\sc\verb-adms\verb-adms\verb-adms.psd1                                                                    
+Module                         C:\sc\verb-adms\verb-adms\verb-adms.psm1                                                                    
+Pester                         c:\sc\verb-adms\Tests\verb-adms.tests.ps1                                                                   
+Guid                           1fda24ae-c9e2-4154-b58d-4910731be1a4                                                                        
+Version                        3.0.0                                                                                                       
+Valid                          False
+2023-08-02 15:28:07 INFO:  : (SET:$objReport.Valid = $true ;)
+2023-08-02 15:28:08 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Manifest                       C:\sc\verb-adms\verb-adms\verb-adms.psd1                                                                    
+Module                         C:\sc\verb-adms\verb-adms\verb-adms.psm1                                                                    
+Pester                         c:\sc\verb-adms\Tests\verb-adms.tests.ps1                                                                   
+Guid                           1fda24ae-c9e2-4154-b58d-4910731be1a4                                                                        
+Version                        3.0.0                                                                                                       
+Valid                          True
+2023-08-02 15:28:08 INFO:  : #*======^ confirm-ModuleBuildSync:  ^======
+2023-08-02 15:28:08 INFO:  : (confirm-ModuleBuildSync:Success)
+2023-08-02 15:28:08 INFO:  : Signing appropriate files...
+2023-08-02 15:28:08 INFO:  : Sign-file w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+file                           {C:\sc\verb-adms\rebuild-module.ps1, C:\sc\verb-adms\requirements.psd1, C:\sc\verb-adms\Tests\PPoShScript...
+ErrorAction                    Stop                                                                                                        
+showdebug                      False                                                                                                       
+whatif                         False
+2023-08-02 15:28:09 INFO:  : Removing existing profile verb-adms content...
+2023-08-02 15:28:09 INFO:  : Uninstall-ModuleForce w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+ModuleName                     verb-adms                                                                                                   
+Verbose                        False                                                                                                       
+whatif                         False
+2023-08-02 15:28:36 INFO:  : 
+#*------v Uninstall PSGet Mod:verb-ADMS:v2.2.0 v------
+2023-08-02 15:29:49 INFO:  : 
+#*------^ Uninstall PSGet Mod:verb-ADMS:v2.2.0 ^------
+2023-08-02 15:29:49 INFO:  : (Processing $env:PSModulePath paths, for surviving locked copies of verb-adms to *manually* purge...)
+2023-08-02 15:29:49 INFO:  : Checking: verb-adms below: C:\Users\kadritss\Documents\WindowsPowerShell\Modules...
+2023-08-02 15:29:49 INFO:  : Checking: verb-adms below: C:\ProgramData\Boxstarter...
+2023-08-02 15:29:49 INFO:  : Checking: verb-adms below: C:\Program Files\WindowsPowerShell\Modules...
+2023-08-02 15:29:49 INFO:  : Checking: verb-adms below: C:\Windows\system32\WindowsPowerShell\v1.0\Modules...
+2023-08-02 15:29:49 INFO:  : Checking: verb-adms below: C:\Program Files\Microsoft Message Analyzer\PowerShell\...
+2023-08-02 15:29:49 INFO:  : Copying module to profile (net of .git & .vscode dirs, and backed up content)...
+2023-08-02 15:29:50 INFO:  : (Profiling Repo: get-PSRepository -name lyncRepo...)
+2023-08-02 15:29:52 INFO:  : 
+Publish-Module w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Name                           verb-adms                                                                                                   
+Repository                     lyncRepo                                                                                                    
+RequiredVersion                3.0.0                                                                                                       
+Verbose                        True                                                                                                        
+ErrorAction                    Stop                                                                                                        
+whatif                         False
+2023-08-02 15:30:36 INFO:  : Waiting for:find-module -name verb-adms -Repository lyncRepo ...
+2023-08-02 15:30:44 INFO:  : Install-Module w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Name                           verb-adms                                                                                                   
+Repository                     lyncRepo                                                                                                    
+RequiredVersion                3.0.0                                                                                                       
+scope                          CurrentUser                                                                                                 
+force                          True                                                                                                        
+AllowClobber                   True                                                                                                        
+ErrorAction                    Stop                                                                                                        
+whatif                         False
+2023-08-02 15:31:02 INFO:  : Testing Module:Import-Module w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Name                           verb-adms                                                                                                   
+ErrorAction                    Stop                                                                                                        
+force                          True                                                                                                        
+verbose                        True
+2023-08-02 15:31:03 INFO:  : Retrieving matching Repo .nupkg file:
+gci \\lynmsv10\lync_fs\scripts\sc\verb-adms.3.0.0.nupkgl..
+2023-08-02 15:31:03 INFO:  : Proper updated .nupkg file found:verb-adms.3.0.0.nupkg, copying to local Pkg directory.
+2023-08-02 15:31:04 INFO:  : remove-UnneededFileVariants w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           c:\sc\verb-adms\Package                                                                                     
+Include                        verb-adms*.nupkg                                                                                            
+Pattern                                                                                                                                    
+FilterOn                       CreationTime                                                                                                
+Keep                           2                                                                                                           
+KeepToday                      True                                                                                                        
+verbose                        True                                                                                                        
+whatif                         False
+2023-08-02 15:31:04 INFO:  : remove-UnneededFileVariants w
+Name                           Value                                                                                                       
+----                           -----                                                                                                       
+Path                           c:\sc\verb-adms\Tests                                                                                       
+Include                        ScriptAnalyzer-Results-*.xml                                                                                
+Pattern                                                                                                                                    
+FilterOn                       CreationTime                                                                                                
+Keep                           4                                                                                                           
+KeepToday                      True                                                                                                        
+verbose                        True                                                                                                        
+whatif                         False
+2023-08-02 15:31:04 INFO:  : -RunTest specified: Running Pester Test script:
+c:\sc\verb-adms\Tests\verb-adms.tests.ps1
+
+2023-08-02 15:33:06 INFO:  : 
+---------------------------------------------------------------------------------
+Processing completed: verb-adms :: c:\sc\verb-adms
+- Script is currently installed (from PsRep: with scope:CurrentUser, under TORO\kadriTSS profile
+
+- To update other scopes/accounts on same machine, or install on other machines:
+    1. Uninstall current module copies:
+
+        Uninstall-Module -Name verb-adms) -AllVersion -whatif ;
+
+    2. Install the current version (or higher) from the Repo:lyncRepo:
+
+        install-Module -name verb-adms -Repository lyncRepo -MinimumVersion 3.0.0 -scope currentuser -whatif ;
+
+    3. Reimport the module with -force, to ensure the current installed verison is loaded:
+
+        import-Module -name verb-adms -force -verbose ;
+
+#-=-Stacked list: Unwrap to create a 1-liner for the above: CURRENTUSER =-=-=-=-=-=-=
+$whatif=$false ; $tMod = 'verb-adms' ; $tVer = '3.0.0' ;  $tScop = 'CurrentUser' ;
+TRY {
+Remove-Module -Name $tmod -ea 0 ;
+Uninstall-Module -Name $tmod -AllVersion -whatif:$($whatif) ;
+install-Module -name $tmod -Repository 'lyncRepo' -MinimumVersion $tVer -scope $tScop -AllowClobber -whatif:$($whatif) ;
+import-Module -name $tmod -force -verbose ;
+} CATCH {
+Write-Warning "Failed processing $($_.Exception.ItemName). 
+Error Message: $($_.Exception.Message)
+Error Details: $($_)" ; Break ;
+} ;
+#-=-=-=-=-=-=-=-=
+#-=-Stacked list: Unwrap to create a 1-liner for the above: ALLUSERS =-=-=-=-=-=-=
+$whatif=$false ; $tMod = 'verb-adms' ; $tVer = '3.0.0' ;  $tScop = 'AllUsers' ;
+TRY {
+Remove-Module -Name $tmod -ea 0 ;
+Uninstall-Module -Name $tmod -AllVersion -whatif:$($whatif) ;
+install-Module -name $tmod -Repository 'lyncRepo' -MinimumVersion $tVer -scope $tScop -AllowClobber -whatif:$($whatif) ;
+import-Module -name $tmod -force -verbose ;
+} CATCH {
+Write-Warning "Failed processing $($_.Exception.ItemName). 
+Error Message: $($_.Exception.Message)
+Error Details: $($_)" ; Break ;
+} ;
+#-=-=-=-=-=-=-=-=
+
+- You may also want to run the configured Pester Tests of the new script:
+
+        . c:\sc\verb-adms\Tests\verb-adms.tests.ps1
+
+Full Processing Details can be found in:
+
+c:\scripts\logs\update-NewModule-verb-adms-LOG-BATCH-EXEC-20230802-1527PM-log.txt
+
+---------------------------------------------------------------------------------
+
+2023-08-02 15:33:06 INFO:  : 
+(Processing log can be found at:c:\sc\verb-adms\c:\scripts\logs\update-NewModule-verb-adms-LOG-BATCH-EXEC-20230802-1527PM-log.txt)

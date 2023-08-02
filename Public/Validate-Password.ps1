@@ -15,6 +15,7 @@ Function Validate-Password{
     Github      : https://github.com/tostka
     Tags        : Powershell,ActiveDirectory
     REVISIONS
+    * 2:02 PM 8/2/2023 w revised req's: reset minLen to 14; added param & test for testComplexity (defaults false)
     * 11:43 AM 4/6/2016 hybrid of Shay Levy's 2008 post, and CommonDollars's 2013 code
     .DESCRIPTION
     Validate-Password - Validate Password complexity, to Base AD Complexity standards
@@ -28,6 +29,8 @@ Function Validate-Password{
     Password to be tested
     .PARAMETER  minLength
     Minimum permissible Password Length
+    .PARAMETER TestComplexity
+    Switch to test Get-ADDefaultDomainPasswordPolicy ComplexityEnabled specs (Defaults false: requires a mix of Uppercase, Lowercase, Digits and Nonalphanumeric characters)[-TestComplexity]
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
@@ -47,14 +50,21 @@ Function Validate-Password{
         [Parameter(Mandatory=$True,HelpMessage="Password to be tested[-Pwd 'string']")]
         [ValidateNotNullOrEmpty()]
         [string]$pwd,
-        [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 8)[-minLen 10]")]
-        [int]$minLen=8
+        [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 14)[-minLen 10]")]
+        [int]$minLen=14,
+        [Parameter(HelpMessage="Switch to test Get-ADDefaultDomainPasswordPolicy ComplexityEnabled specs (Defaults false: requires a mix of Uppercase, Lowercase, Digits and Nonalphanumeric characters)[-TestComplexity]")]
+        [switch]$TestComplexity=$false
     ) ;
     $IsGood=0 ;
     if($pwd.length -lt $minLen) {write-output $false; return} ;
-    if(([regex]"[A-Z]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
-    If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
+    if($TestComplexity){
+        if(([regex]"[A-Z]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
+        If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
+    } else { 
+        write-verbose "complexity test skipped" ; 
+        write-output $true ;
+    } ; 
 }#*------^ END Function Validate-Password ^------

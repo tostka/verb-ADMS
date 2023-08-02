@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 2.2.0.0
+  Version     : 3.0.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -3141,6 +3141,7 @@ Function Validate-Password{
     Github      : https://github.com/tostka
     Tags        : Powershell,ActiveDirectory
     REVISIONS
+    * 2:02 PM 8/2/2023 w revised req's: reset minLen to 14; added param & test for testComplexity (defaults false)
     * 11:43 AM 4/6/2016 hybrid of Shay Levy's 2008 post, and CommonDollars's 2013 code
     .DESCRIPTION
     Validate-Password - Validate Password complexity, to Base AD Complexity standards
@@ -3154,6 +3155,8 @@ Function Validate-Password{
     Password to be tested
     .PARAMETER  minLength
     Minimum permissible Password Length
+    .PARAMETER TestComplexity
+    Switch to test Get-ADDefaultDomainPasswordPolicy ComplexityEnabled specs (Defaults false: requires a mix of Uppercase, Lowercase, Digits and Nonalphanumeric characters)[-TestComplexity]
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
@@ -3173,16 +3176,23 @@ Function Validate-Password{
         [Parameter(Mandatory=$True,HelpMessage="Password to be tested[-Pwd 'string']")]
         [ValidateNotNullOrEmpty()]
         [string]$pwd,
-        [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 8)[-minLen 10]")]
-        [int]$minLen=8
+        [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 14)[-minLen 10]")]
+        [int]$minLen=14,
+        [Parameter(HelpMessage="Switch to test Get-ADDefaultDomainPasswordPolicy ComplexityEnabled specs (Defaults false: requires a mix of Uppercase, Lowercase, Digits and Nonalphanumeric characters)[-TestComplexity]")]
+        [switch]$TestComplexity=$false
     ) ;
     $IsGood=0 ;
     if($pwd.length -lt $minLen) {write-output $false; return} ;
-    if(([regex]"[A-Z]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
-    If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
+    if($TestComplexity){
+        if(([regex]"[A-Z]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
+        If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
+    } else { 
+        write-verbose "complexity test skipped" ; 
+        write-output $true ;
+    } ; 
 }
 
 #*------^ Validate-Password.ps1 ^------
@@ -3198,8 +3208,8 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUrG0I5KUTKCTPjYOIXHP8Cj96
-# ojmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnVmrlkmRoJmf1gmEn5Sw0zD9
+# 0LWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3214,9 +3224,9 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQn/lnC
-# ce9C4OzGiLGJHWSQ77ByPjANBgkqhkiG9w0BAQEFAASBgET5HfWpPs0MIYrKoYSM
-# 5ZlYOJG1K/qGB8c3wkEc06rJmaAqR54hAWz7fuhCLYLSNJI2NvKXlO/R8XKU06VV
-# c4w4rWh7ZdjUOmnZtSwbLgvJfjLcd/Wcc+1ly5MsVM8OTJN7mJbI3Y38ADbFJQ3w
-# 29NtIfdEKaQg7IzLLTbq7Rpj
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQCsgSA
+# TGyUOx16As+JUv5zHJPK1TANBgkqhkiG9w0BAQEFAASBgAM1o39g7NoCqwQ2W7nH
+# tMTMbPEG8XRkdJFwCEB7YSLc/mawqNS9NIoc+gkyWdok5nVuswSrpsd9GWzKSoYW
+# +Bhc2NOmPZwPFy5glb1D7kTObooIz1RS0QYhxBsz8fmVD/cd+fkUkWQDHWzyCxlQ
+# vO28Vyp7OsLoKA/DFSDsW1Is
 # SIG # End signature block
