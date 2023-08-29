@@ -8,6 +8,7 @@ function load-ADMS {
     Website:	http://toddomation.com
     Twitter:	http://twitter.com/tostka
     REVISIONS   :
+    * 12:57 PM 8/22/2023 test before calling Add-PSTitleBar (for PRY/dep-less support)
     * 9:18 AM 7/26/2021 added add-PSTitleBar ADMS tag, w verbose supp; moved connect-ad alias into function alias spec
     * 2:10 PM 6/9/2021 add verbose support 
     * 9:57 AM 11/26/2019 added $Cmdlet param, and ADPS_LoadDefaultDrive suppression evari, to speed up or permit selective loads of targeted cmdlests, stipped down the 'load every module' code to just target the single mod
@@ -58,7 +59,9 @@ function load-ADMS {
         if (!($ModsLoad)) {
             $env:ADPS_LoadDefaultDrive = 0 ;
             import-module @pltAD;
-            Add-PSTitleBar 'ADMS' -verbose:$($VerbosePreference -eq "Continue") ;
+            if(get-command Add-PSTitleBar -ea 0){
+                Add-PSTitleBar 'ADMS' -verbose:$($VerbosePreference -eq "Continue") ;
+            } ; 
             return $TRUE;
         } else {
             return $TRUE;
@@ -67,4 +70,5 @@ function load-ADMS {
         Write-Error {"$((get-date).ToString('HH:mm:ss')):($env:computername) does not have AD Mgmt Tools installed!";};
         return $FALSE
     } # if-E ;
-} #*----------^END Function load-ADMS ^----------
+} ;
+#*----------^END Function load-ADMS ^----------
