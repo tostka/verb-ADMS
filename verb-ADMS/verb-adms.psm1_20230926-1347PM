@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 2.1.1.0
+  Version     : 3.0.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -67,10 +67,12 @@
   #>
 
 
-$script:ModuleRoot = $PSScriptRoot ;
-$script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
+    $script:ModuleRoot = $PSScriptRoot ;
+    $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
+    $runningInVsCode = $env:TERM_PROGRAM -eq 'vscode' ;
 
 #*======v FUNCTIONS v======
+
 
 
 
@@ -337,6 +339,7 @@ function find-SiteRoleOU {
 
 #*------^ find-SiteRoleOU.ps1 ^------
 
+
 #*------v get-ADForestDrives.ps1 v------
 function get-ADForestDrives {
     <#
@@ -421,6 +424,7 @@ function get-ADForestDrives {
 
 #*------^ get-ADForestDrives.ps1 ^------
 
+
 #*------v Get-AdminInitials.ps1 v------
 function Get-AdminInitials {
     <#
@@ -457,6 +461,7 @@ function Get-AdminInitials {
 }
 
 #*------^ Get-AdminInitials.ps1 ^------
+
 
 #*------v get-ADRootSiteOUs.ps1 v------
 function get-ADRootSiteOUs {
@@ -540,6 +545,458 @@ function get-ADRootSiteOUs {
 
 #*------^ get-ADRootSiteOUs.ps1 ^------
 
+
+#*------v get-ADSiteLocal.ps1 v------
+function get-ADSiteLocal {
+    <#
+    .SYNOPSIS
+    get-ADSiteLocal.ps1 - Return the local computer's AD Site name.
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2021-08-16
+    FileName    : get-ADSiteLocal.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,ADSite,Computer
+    AddedCredit : 
+    AddedWebsite: 
+    AddedTwitter: 
+    REVISIONS
+    * 10:03 AM 9/14/2022 init
+    .DESCRIPTION
+    get-ADSiteLocal.ps1 - Return the local computer's AD Site name
+    Simple wrap of the 
+    [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
+    for local machine, or 'nltest /server:$Item /dsgetsite 2' for remote machines
+    .PARAMETER Name
+    Array of System Names to test (defaults to local machine)[-Name SomeBox]
+    .EXAMPLE
+    $ADSite = get-ADSiteLocal 
+    Return local computer ADSite name
+    .EXAMPLE
+    $ADSite = get-ADSiteLocal -Name somebox
+    Return remote computer ADSite name
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding()]
+    PARAM (
+        [parameter(ValueFromPipeline=$true,HelpMessage="Array of System Names to test (defaults to local machine)[-Name SomeBox]")]
+        [string[]]$Name = $env:COMPUTERNAME
+    )
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+        if ($PSCmdlet.MyInvocation.ExpectingInput) {
+            write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
+        } else {
+            #write-verbose "Data received from parameter input: '$($InputObject)'" ; 
+            write-verbose "(non-pipeline - param - input)" ; 
+        } ; 
+    } ;  # BEG-E
+    PROCESS {
+        foreach($item in $Name){
+            
+            if($item -eq $env:ComputerName){
+                
+               $bNonWin = $false ; 
+                if( (get-variable isWindows -ea 0) -AND $isWindows){
+                    write-verbose "(`$isWindows:$($IsWindows))" ; 
+                }elseif( (get-variable isWindows -ea 0) -AND -not($isWindows)){
+                    write-verbose "(`$isWindows:$($IsWindows))" ; 
+                    $smsg = "$($env:computername) IS *NOT* A WINDOWS COMPUTER!`nThis command is unsupported without Windows..." ; 
+                    write-warning $smsg 
+                    throw $smsg ; 
+                    Break ; 
+                } else{
+                    switch ([System.Environment]::OSVersion.Platform){
+                        'Win32NT' {
+                            write-verbose "$($env:computername) detects as a windows computer)" ; 
+                            $bNonWin = $false ; 
+                        }
+                        default{
+                          # Linux/Unix returns 'Unix'
+                          $bNonWin = $true ; 
+                        } ;
+                    } ; 
+                } ; 
+                if($bNonWin){
+                    $smsg = "$($env:computername) IS *NOT* A WINDOWS COMPUTER!`nThis command is unsupported without Windows..." ; 
+                    write-warning $smsg 
+                    throw $smsg ; 
+                    Break ; 
+                } ; 
+                write-host "(retrieving local computer AD Site name...)" ; 
+                TRY{
+                    [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name | write-output ; 
+                } CATCH {$smsg = $_.Exception.Message ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    Continue ;
+                } ;
+            
+            } else { 
+                # there's fancier ways to do it, but the nltest works across revs
+                if(get-command nltest){
+                    write-verbose "(using legacy nltest /server:$($Item) /dsgetsite 2...)" ; 
+                    $site = nltest /server:$Item /dsgetsite 2>$null
+                    if($LASTEXITCODE -eq 0){ $site[0] | write-output } 
+                    else {
+                        $smsg = "nltest non-zero `$LASTEXITCODE:$($LASTEXITCODE): UNABLE to determine remote machine's ADSite!" ; 
+                        write-warning $smsg 
+                        throw $smsg ; 
+                        Continue ; 
+                    } ; 
+                } else {
+                    $smsg = "UNABLE to locate local nltest dependancy!" ; 
+                    write-warning $smsg 
+                    throw $smsg ; 
+                    Break ; 
+                } ;  ; 
+            } ;  
+        } ;  # loop-E
+        
+    } ;  # PROC-E
+    END {
+        write-verbose "(get-ADSiteLocal:End)" ; 
+    } ; 
+}
+
+#*------^ get-ADSiteLocal.ps1 ^------
+
+
+#*------v get-ADUserViaUPN.ps1 v------
+function get-ADUserViaUPN {
+    <#
+    .SYNOPSIS
+    get-ADUserViaUPN - get-ADUser wrapper that implements a -UserPrincipalName parameter, and proper -EA STOP error return (like the -Identity parameter). 
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2022-02-03
+    FileName    : get-ADUserViaUPN
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell, ActiveDirectory, UserPrincipalName
+    REVISIONS
+    * 10:57 AM 2/3/2022 init
+    .DESCRIPTION
+    get-ADUserViaUPN - get-ADUser wrapper that implements proper -EA STOP error return when using -filter {UPN -eq 'someupn@domain'}. 
+    Issue is that the get-AD* ActiveDirectory module cmdlets completely fail to implement a variety of standard features of other powershell modules. 
+     -Identity has no support for UserPrincipalName lookup (the modern authentication identifier). 
+        instead, the standard supported approach is to use the -filter cmdlet to run a filtered search: 
+        -filter "userprincipalname -eq 'UPN@domain.com'"
+        or, with variables:
+        -filter "userprincipalname -eq '$($UPN)'"
+     -But, unlike failures to lookup using the -identity parameter, use of the necessary -Filter parameter fails to generate a Try/Catch-able error even when using -ErrorAction 'STOP'. 
+     -This makes it a challenge to detect lookup failures. So this wrapper function aims to shim in the missing bits, to provide a get-aduser cmdlet that at least *somewhat* emulates proper -userprinicpalname parameter suppor. 
+     
+    The wrapper function passes through the following stock get-aduser parameters:
+        [string] Partition,
+        [String[]] Properties,
+        [Int32] ResultPageSize,
+        [string] SearchBase,
+        [string] SearchScope    
+
+    Note -Properties does *not* implement wild-card resolution: only a comma-delimited or array list of full property names are supported in this wrapper. (get-aduser must do natively resolution of the wildcards to the underlying full properties list on the target objects, and attempts to pass through wildcards intact results in errors). 
+    
+    The following parameter help is cribbed from the underlying get-ADUser cmdlet...
+    
+    .PARAMETER UserPrincipalName
+    UserPrincipalName [-UserPrincipalName xxx@toro.com]
+    .PARAMETER Partition <String>
+    Specifies the distinguished name of an Active Directory partition. The distinguished name must be one of the naming contexts on the current directory server. The cmdlet searches this partition to find the object defined by the Identity parameter.
+
+    The following two examples show how to specify a value for this parameter.
+
+    -Partition "CN=Configuration,DC=EUROPE,DC=TEST,DC=CONTOSO,DC=COM"
+
+    -Partition "CN=Schema,CN=Configuration,DC=EUROPE,DC=TEST,DC=CONTOSO,DC=COM"
+
+    In many cases, a default value will be used for the Partition parameter if no value is specified.  The rules for determining the default value are given below.  Note that rules listed first are evaluated first and once a default value can be
+    determined, no further rules will be evaluated.
+
+    In AD DS environments, a default value for Partition will be set in the following cases:  - If the Identity parameter is set to a distinguished name, the default value of Partition is automatically generated from this distinguished name.
+
+    - If running cmdlets from an Active Directory provider drive, the default value of Partition is automatically generated from the current path in the drive.
+
+    - If none of the previous cases apply, the default value of Partition will be set to the default partition or naming context of the target domain.
+
+    In AD LDS environments, a default value for Partition will be set in the following cases:
+
+    - If the Identity parameter is set to a distinguished name, the default value of Partition is automatically generated from this distinguished name.
+
+    - If running cmdlets from an Active Directory provider drive, the default value of Partition is automatically generated from the current path in the drive.
+
+    - If the target AD LDS instance has a default naming context, the default value of Partition will be set to the default naming context.  To specify a default naming context for an AD LDS environment, set the msDS-defaultNamingContext property of the
+    Active Directory directory service agent (DSA) object (nTDSDSA) for the AD LDS instance.
+
+    - If none of the previous cases apply, the Partition parameter will not take any default value.
+    .PARAMETER Properties
+    Specifies the properties of the output object to retrieve from the server. Use this parameter to retrieve properties that are not included in the default set.
+
+    Specify properties for this parameter as a comma-separated list of names. To display all of the attributes that are set on the object, specify * (asterisk).
+
+    To specify an individual extended property, use the name of the property. For properties that are not default or extended properties, you must specify the LDAP display name of the attribute.
+
+    To retrieve properties and display them for an object, you can use the Get-* cmdlet associated with the object and pass the output to the Get-Member cmdlet. The following examples show how to retrieve properties for a group where the Administrator's
+    group is used as the sample group object.
+
+    Get-ADGroup -Identity Administrators | Get-Member
+
+    To retrieve and display the list of all the properties for an ADGroup object, use the following command:
+
+    Get-ADGroup -Identity Administrators -Properties *| Get-Member
+
+    The following examples show how to use the Properties parameter to retrieve individual properties as well as the default, extended or complete set of properties.
+
+    To retrieve the extended properties "OfficePhone" and "Organization" and the default properties of an ADUser object named "SaraDavis", use the following command:
+
+    GetADUser -Identity SaraDavis  -Properties OfficePhone,Organization
+
+    To retrieve the properties with LDAP display names of "otherTelephone" and "otherMobile", in addition to the default properties for the same user, use the following command:
+
+    GetADUser -Identity SaraDavis  -Properties otherTelephone, otherMobile |Get-Member
+    .PARAMETER ResultPageSize
+    Specifies the number of objects to include in one page for an Active Directory Domain Services query.
+
+    The default is 256 objects per page.
+
+    The following example shows how to set this parameter.
+
+    -ResultPageSize 500  
+    .PARAMETER SearchBase <String>
+    Specifies an Active Directory path to search under.
+
+    When you run a cmdlet from an Active Directory provider drive, the default value of this parameter is the current path of the drive.
+
+    When you run a cmdlet outside of an Active Directory provider drive against an AD DS target, the default value of this parameter is the default naming context of the target domain.
+
+    When you run a cmdlet outside of an Active Directory provider drive against an AD LDS target, the default value is the default naming context of the target LDS instance if one has been specified by setting the msDS-defaultNamingContext property of
+    the Active Directory directory service agent (DSA) object (nTDSDSA) for the AD LDS instance.  If no default naming context has been specified for the target AD LDS instance, then this parameter has no default value.
+
+    The following example shows how to set this parameter to search under an OU.
+
+    -SearchBase "ou=mfg,dc=noam,dc=corp,dc=contoso,dc=com"
+
+    When the value of the SearchBase parameter is set to an empty string and you are connected to a GC port, all partitions will be searched. If the value of the SearchBase parameter is set to an empty string and you are not connected to a GC port, an
+    error will be thrown.
+
+    The following example shows how to set this parameter to an empty string.   -SearchBase ""
+    
+    .PARAMETER SearchScope <ADSearchScope>
+    Specifies the scope of an Active Directory search. Possible values for this parameter are:
+
+    Base or 0
+
+    OneLevel or 1
+
+    Subtree or 2
+
+    A Base query searches only the current path or object. A OneLevel query searches the immediate children of that path or object. A Subtree query searches the current path or object and all children of that path or object.
+
+    The following example shows how to set this parameter to a subtree search.
+    .PARAMETER Server
+    Specifies the Active Directory Domain Services instance to connect to, by providing one of the following values for a corresponding domain name or directory server. The service may be any of the following:  Active Directory Lightweight Domain
+    Services, Active Directory Domain Services or Active Directory Snapshot instance.
+
+    Domain name values:
+
+    Fully qualified domain name
+
+    Examples: corp.contoso.com
+
+    NetBIOS name
+
+    Example: CORP
+
+    Directory server values:
+
+    Fully qualified directory server name
+
+    Example: corp-DC12.corp.contoso.com
+
+    NetBIOS name
+
+    Example: corp-DC12
+
+    Fully qualified directory server name and port
+
+    Example: corp-DC12.corp.contoso.com:3268
+
+    The default value for the Server parameter is determined by one of the following methods in the order that they are listed:
+
+    -By using Server value from objects passed through the pipeline.
+
+    -By using the server information associated with the Active Directory PowerShell provider drive, when running under that drive.
+
+    -By using the domain of the computer running Powershell.
+
+    The following example shows how to specify a full qualified domain name as the parameter value.
+
+    -Server "corp.contoso.com"
+    
+    .PARAMETER UserPrincipalName
+    UserPrincipalName [-UserPrincipalName xxx@toro.com]
+    .PARAMETER outputObject
+    Object output switch [-outputObject]
+    .EXAMPLE
+    PS> $gadu = get-ADUserViaUPN -UserPrincipalName UPN@DOMAIN.COM -verbose -prop description,title ; 
+    Lookup ADUser object filtering on UPN, specifying two properties, verbose, and assign result to a variable   
+    .EXAMPLE
+    PS> $gadu = get-ADUserViaUPN -UserPrincipalName UPN@DOMAIN.COM  ; 
+    Lookup ADUser object filtering on UPN, default behaivior (without -properties specification) is to return all properties of the located object.  
+    .LINK
+    https://github.com/tostka/verb-AAD
+    #>
+    #Requires -Version 3
+    #Requires -Modules verb-AAD, ActiveDirectory
+    #Requires -RunasAdministrator
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(Position=1,Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="UserPrincipalName [-UserPrincipalName xxx@toro.com]")]
+        [Alias('UPN')]
+        $UserPrincipalName,
+        [string] $Partition,
+        [String[]] $Properties,
+        [Int32] $ResultPageSize,
+        [string] $SearchBase,
+        [string] $SearchScope
+        #[Parameter(HelpMessage="Object output switch [-outputObject]")]
+        #[switch] $outputObject
+    ) # PARAM BLOCK END
+
+    BEGIN { 
+        
+        if ($PSCmdlet.MyInvocation.ExpectingInput) {
+            $smsg = "Data received from pipeline input: '$($InputObject)'" ; 
+            write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ; 
+        } else {
+            #$smsg = "Data received from parameter input: '$($InputObject)'" ; 
+            $smsg = "(non-pipeline - param - input)" ; 
+            write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" ; 
+        } ; 
+
+    } ;  # BEGIN-E
+    PROCESS {
+        $Error.Clear() ; 
+        # call func with $PSBoundParameters and an extra (includes Verbose)
+        #call-somefunc @PSBoundParameters -anotherParam
+    
+        # - Pipeline support will iterate the entire PROCESS{} BLOCK, with the bound - $array - 
+        #   param, iterated as $array=[pipe element n] through the entire inbound stack. 
+        # $_ within PROCESS{}  is also the pipeline element (though it's safer to declare and foreach a bound $array param).
+    
+        # - foreach() below alternatively handles _named parameter_ calls: -array $objectArray
+        # which, when a pipeline input is in use, means the foreach only iterates *once* per 
+        #   Process{} iteration (as process only brings in a single element of the pipe per pass) 
+        
+        [array]$Rpt = @() ; 
+        $1stConn = $true ; 
+        foreach($UPN in $UserPrincipalName) {
+            # dosomething w $item
+        
+            # put your real processing in here, and assume everything that needs to happen per loop pass is within this section.
+            # that way every pipeline or named variable param item passed will be processed through. 
+
+            # if these are driven by ADConnect fails, it's almost guaranteed that the referred UPN exists in o365. But it may not onprem.
+
+                $sBnr="#*======v UPN: $($UPN): v======" ;
+                write-verbose "$((get-date).ToString('HH:mm:ss')):`n$($sBnr)" ;
+                #$hReports = [ordered]@{} ; 
+                
+                    # AD abberant -filter syntax: Get-ADUser -Filter 'sAMAccountName -eq $SamAc'
+                    $filter = "userprincipalname -eq '$($UPN)'" ;
+                    $pltGADU=[ordered]@{
+                        filter= $filter ;
+                        #Properties = 'DisplayName' ;
+                        ErrorAction= 'STOP' 
+                    } ;
+                    # [string] $Partition,
+                    if($Partition){$pltGADU.add('Partition',$Partition)} ;
+                    #[String[]] $Properties,
+                    if($Properties){
+                        if($properties -match '\*'){
+                            $smsg = "Asterisk (*) detected in -properties specification:" ; 
+                            $smsg += "`nFull partial-property name wild card property conversion is not implemented in this wrapper."
+                            $smsg += "`nPlease specify full property names in a comma-deliminted list" ; 
+                            $smsg += "`n(or use default *no* -property behavior:return *all* properties of located object)"
+                            write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ; 
+                            break ; 
+                        } ; 
+                        $pltGADU.add('Properties',$Properties) ; 
+                    } else {
+                        # if properties unspecified, pull *everything*, like every other blanking module in existence!
+                        $smsg = "(no -properties specified: returning *all* properties, like a sensible module would)" ; 
+                        write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ; 
+                        $pltGADU.add('Properties','*') ; 
+                    }  ;
+                    #[Int32] $ResultPageSize,
+                    if($ResultPageSize){$pltGADU.add('ResultPageSize',$ResultPageSize)} ;
+                    #[string] $SearchBase,
+                    if($SearchBase){$pltGADU.add('SearchBase',$SearchBase)} ;
+                    #[ADSearchScope] $SearchScope,                    
+                    if($SearchScope){$pltGADU.add('SearchScope',$SearchScope)} ;
+                    $smsg = "get-aduser w`n$(($pltGADU|out-string).trim())" ; 
+                    write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ;
+                    $ADUser = $null ; 
+                    Try {
+                        $ADUser = get-aduser @pltGADU ; 
+                        # if it won't trigger test & throw 
+                        if($AdUser){
+                            $smsg = "(get-aduser matched:$($aduser.userprincipalname))" ; 
+                            write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ; 
+                        } else { 
+                            $smsg = "(get-aduser FAILED to match -filter:$($pltGADU.filter))" ; 
+                            write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" ; 
+                            #throw $smsg  ; 
+                            # try to throw a stock ad not-found error (emulate it)
+                            throw [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] "$($smsg)"
+                        } ; 
+                    # doesn't work natively -filter doesn't generate a catchable error, even with -ea STOP, this block never triggers
+                    } Catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
+                        $smsg = "No GET-ADUSER match found for -filter:$($filter)" ; 
+                        write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;      
+                        Write-Error $smsg ;
+                        Continue ; 
+                    # reworking extended vers of above
+                    } CATCH {
+                        $ErrTrapd=$Error[0] ;
+                        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                        write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+                        
+                        Continue ;
+                    } ; 
+                    #
+                write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):`n$($sBnr.replace('=v','=^').replace('v=','^='))`n" ;
+            
+            # convert the hashtable to object for output to pipeline
+            #$Rpt += New-Object PSObject -Property $hReports ;
+            if($ADUser){
+                $ADUser| write-output ;
+            } ; 
+        
+        } ; # loop-E
+
+    } ;  # PROC-E
+    END {
+        
+    } ;  # END-E
+}
+
+#*------^ get-ADUserViaUPN.ps1 ^------
+
+
 #*------v get-DCLocal.ps1 v------
 Function get-DCLocal {
     <#
@@ -604,6 +1061,7 @@ Function get-DCLocal {
 }
 
 #*------^ get-DCLocal.ps1 ^------
+
 
 #*------v get-GCFast.ps1 v------
 function get-GCFast {
@@ -694,6 +1152,7 @@ function get-GCFast {
 }
 
 #*------^ get-GCFast.ps1 ^------
+
 
 #*------v get-GCFastXO.ps1 v------
 Function get-GCFastXO {
@@ -1168,6 +1627,7 @@ Maximum latency in ms, to be permitted for returned objects[-MaxLatency 100]
 
 #*------^ get-GCFastXO.ps1 ^------
 
+
 #*------v get-GCLocal.ps1 v------
 Function get-GCLocal {
     <#
@@ -1231,6 +1691,7 @@ Function get-GCLocal {
 }
 
 #*------^ get-GCLocal.ps1 ^------
+
 
 #*------v get-SiteMbxOU.ps1 v------
 function get-SiteMbxOU {
@@ -1303,6 +1764,7 @@ function get-SiteMbxOU {
 }
 
 #*------^ get-SiteMbxOU.ps1 ^------
+
 
 #*------v grant-ADGroupManagerUpdateMembership.ps1 v------
 function grant-ADGroupManagerUpdateMembership {
@@ -1515,6 +1977,7 @@ function grant-ADGroupManagerUpdateMembership {
 
 #*------^ grant-ADGroupManagerUpdateMembership.ps1 ^------
 
+
 #*------v load-ADMS.ps1 v------
 function load-ADMS {
     <#
@@ -1588,6 +2051,7 @@ function load-ADMS {
 
 #*------^ load-ADMS.ps1 ^------
 
+
 #*------v mount-ADForestDrives.ps1 v------
 function mount-ADForestDrives {
     <#
@@ -1608,6 +2072,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 1:08 PM 1/31/2022 trimmed requires, dropping rem'd entries
     # 3:34 PM 6/9/2021 rev'd all echos to write-verbose only (silent op)
     # 12:24 PM 3/19/2021 added -NoTOL to suppress inaccessible TOL forest (until network opens up the blocked ports) ;  flipped userroles to array SID,ESVC,LSVC, trying to get it to *always* pull working acct (failing in CMW)
     # 3:07 PM 3/18/2021 swapped overlapping vari names with prefixed $l[name] variants, also set to $script:Name scopes, to ensure no clashing. 
@@ -1674,7 +2139,6 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
     https://github.com/tostka/verb-adms
     #>
     #Requires -Version 3
-    ##requires -PSEdition Desktop
     #Requires -Modules ActiveDirectory
     #Requires -RunasAdministrator
     [CmdletBinding()]
@@ -1877,6 +2341,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
 
 #*------^ mount-ADForestDrives.ps1 ^------
 
+
 #*------v resolve-ADRightsGuid.ps1 v------
 function resolve-ADRightsGuid {
     <#
@@ -1970,6 +2435,7 @@ function resolve-ADRightsGuid {
 
 #*------^ resolve-ADRightsGuid.ps1 ^------
 
+
 #*------v Sync-AD.ps1 v------
 Function Sync-AD { 
     # let's you trigger a replication between DCs. This function needs further tweaks for re-usability
@@ -1985,6 +2451,7 @@ Function Sync-AD {
 }
 
 #*------^ Sync-AD.ps1 ^------
+
 
 #*------v test-AADUserSync.ps1 v------
 function test-AADUserSync {
@@ -2384,6 +2851,7 @@ function test-AADUserSync {
 
 #*------^ test-AADUserSync.ps1 ^------
 
+
 #*------v test-ADUserEmployeeNumber.ps1 v------
 function test-ADUserEmployeeNumber {
     <#
@@ -2564,6 +3032,7 @@ function test-ADUserEmployeeNumber {
 
 #*------^ test-ADUserEmployeeNumber.ps1 ^------
 
+
 #*------v umount-ADForestDrives.ps1 v------
 function unmount-ADForestDrives {
     <#
@@ -2654,6 +3123,7 @@ function unmount-ADForestDrives {
 
 #*------^ umount-ADForestDrives.ps1 ^------
 
+
 #*------v Validate-Password.ps1 v------
 Function Validate-Password{
     <#
@@ -2671,6 +3141,7 @@ Function Validate-Password{
     Github      : https://github.com/tostka
     Tags        : Powershell,ActiveDirectory
     REVISIONS
+    * 2:02 PM 8/2/2023 w revised req's: reset minLen to 14; added param & test for testComplexity (defaults false)
     * 11:43 AM 4/6/2016 hybrid of Shay Levy's 2008 post, and CommonDollars's 2013 code
     .DESCRIPTION
     Validate-Password - Validate Password complexity, to Base AD Complexity standards
@@ -2684,6 +3155,8 @@ Function Validate-Password{
     Password to be tested
     .PARAMETER  minLength
     Minimum permissible Password Length
+    .PARAMETER TestComplexity
+    Switch to test Get-ADDefaultDomainPasswordPolicy ComplexityEnabled specs (Defaults false: requires a mix of Uppercase, Lowercase, Digits and Nonalphanumeric characters)[-TestComplexity]
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
@@ -2703,30 +3176,40 @@ Function Validate-Password{
         [Parameter(Mandatory=$True,HelpMessage="Password to be tested[-Pwd 'string']")]
         [ValidateNotNullOrEmpty()]
         [string]$pwd,
-        [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 8)[-minLen 10]")]
-        [int]$minLen=8
+        [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 14)[-minLen 10]")]
+        [int]$minLen=14,
+        [Parameter(HelpMessage="Switch to test Get-ADDefaultDomainPasswordPolicy ComplexityEnabled specs (Defaults false: requires a mix of Uppercase, Lowercase, Digits and Nonalphanumeric characters)[-TestComplexity]")]
+        [switch]$TestComplexity=$false
     ) ;
     $IsGood=0 ;
     if($pwd.length -lt $minLen) {write-output $false; return} ;
-    if(([regex]"[A-Z]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
-    If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
+    if($TestComplexity){
+        if(([regex]"[A-Z]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
+        If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
+    } else { 
+        write-verbose "complexity test skipped" ; 
+        write-output $true ;
+    } ; 
 }
 
 #*------^ Validate-Password.ps1 ^------
 
+
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,Validate-Password -Alias *
+Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-ADSiteLocal,get-ADUserViaUPN,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,Validate-Password -Alias *
+
+
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUV31dJdKbRLcBIHz/jqUzfkoC
-# 0qKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnVmrlkmRoJmf1gmEn5Sw0zD9
+# 0LWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2741,9 +3224,9 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT9dhm8
-# /Q0eyDZLihAqZg64DVlQjzANBgkqhkiG9w0BAQEFAASBgGRIPxhNs+gjIZ00k+GR
-# hGvvdIne/jygj0lQrQ9h1uJPts596V3QcycBXfgxBYiv0p9m6QUqe3iAJN9NPe/P
-# 2523OPpz2UuIDQe62Z3l+l8UYA9n45mx9mNAceI02kStvIDzr1dNHMNRP3qVzxuX
-# y9jzxOsXSmJQSHjenpe3QHhm
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQCsgSA
+# TGyUOx16As+JUv5zHJPK1TANBgkqhkiG9w0BAQEFAASBgAM1o39g7NoCqwQ2W7nH
+# tMTMbPEG8XRkdJFwCEB7YSLc/mawqNS9NIoc+gkyWdok5nVuswSrpsd9GWzKSoYW
+# +Bhc2NOmPZwPFy5glb1D7kTObooIz1RS0QYhxBsz8fmVD/cd+fkUkWQDHWzyCxlQ
+# vO28Vyp7OsLoKA/DFSDsW1Is
 # SIG # End signature block
