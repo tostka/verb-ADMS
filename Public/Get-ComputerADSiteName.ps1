@@ -29,9 +29,27 @@ function Get-ComputerADSiteName{
 
     [#PSTip Get the AD site name of a computer](https://powershellmagazine.com/2013/04/23/pstip-get-the-ad-site-name-of-a-computer/)
 
-    
+    Stripped down portable/pastable copy (no CBH, e.g. Shay Levy's stripped down exmple w minor upgrades from this func; still pasteable into other scripts wo tweaking)
+
+        ```Powershell
+        function Get-ComputerADSiteName{
+            [CmdletBinding()]
+            Param(
+                [Parameter(Position = 0, ValueFromPipeline = $true,HelpMessage="Computername for site lookup")]
+                    [string]$ComputerName = $Env:COMPUTERNAME        
+            ) ; 
+            BEGIN { TRY{get-command nltest -ea STOP | out-null}CATCH{write-warning "missing dependnant nltest util!" ; break }} ;
+            PROCESS {
+                write-verbose $ComputerName ;
+	            $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
+	            if($LASTEXITCODE -eq 0){$site[0].trim() | write-output } else {write-warning "Unable to run  nltest /server:$($ComputerName) /dsgetsite successfully" } ; 
+            } ; 
+        }
+
+        ```
+       
     .PARAMETER  Computername
-    Specifies a computername for the subnet/site lookup.
+    Computername for site lookup
     Defaults to %COMPUTERNAME%
     .INPUTS
     Accepts piped input.
@@ -40,9 +58,18 @@ function Get-ComputerADSiteName{
     .EXAMPLE
     PS>Get-ComputerADSiteName -ComputerName PC123456789
         
-        ADSiteName        : EULON01
-        ADSiteDescription : London
+        EULON01
 
+    Demo resolution of computername to sitename
+    .EXAMPLE
+    'Server1','Server2' | Get-ComputerADSiteName -verbose
+
+        VERBOSE: Server1
+        Site1
+        VERBOSE: Server2
+        Site2
+
+    Demo resolution of array of computernames through pipeline, with verbose output
     .LINK
     https://powershellmagazine.com/2013/04/23/pstip-get-the-ad-site-name-of-a-computer/
     .LINK
@@ -50,19 +77,16 @@ function Get-ComputerADSiteName{
     .LINK
     https://github.com/tostka/verb-ADMS
     #>
-    [CmdletBinding(DefaultParameterSetName = "byHost")]
+    [CmdletBinding()]
     Param(
-        [Parameter(Position = 0, ValueFromPipeline = $true)]
+        [Parameter(Position = 0, ValueFromPipeline = $true,HelpMessage="Computername for site lookup")]
             [string]$ComputerName = $Env:COMPUTERNAME        
-    )
-    BEGIN {
-        TRY{get-command nltest -ea STOP | out-null}CATCH{write-warning "missing dependnant nltest util!" ; break }
-    } ;
+    ) ; 
+    BEGIN { TRY{get-command nltest -ea STOP | out-null}CATCH{write-warning "missing dependnant nltest util!" ; break }} ;
     PROCESS {
+        write-verbose $ComputerName ;
 	    $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
-	    if($LASTEXITCODE -eq 0){
-             $site[0].trim() | write-output 
-        }else{write-warning "Unable to run  nltest /server:$($ComputerName) /dsgetsite successfully" } ; 
+	    if($LASTEXITCODE -eq 0){$site[0].trim() | write-output } else {write-warning "Unable to run  nltest /server:$($ComputerName) /dsgetsite successfully" } ; 
     } ; 
 }; 
 #*------^ END Function Get-ComputerADSiteName ^------
