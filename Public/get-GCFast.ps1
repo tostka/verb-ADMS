@@ -11,6 +11,7 @@ function get-GCFast {
     Additional Credits: Originated in Ben Lye's GetLocalDC()
     Website:	http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 3:38 PM 3/7/2024 SPB Site:Spellbrook no longer has *any* GCs: coded in a workaround and discvoer domain-wide filtering for CN=EDC.* gcs (as spb servers use EDCMS8100 AS LOGONDC)
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
     # 2:19 PM 4/29/2019 add [lab dom] to the domain param validateset & site lookup code, also copied into tsksid-incl-ServerCore.ps1
     # 2:39 PM 8/9/2017 ADDED some code to support labdom.com, also added test that $LocalDcs actually returned anything!
@@ -41,6 +42,7 @@ function get-GCFast {
     [string]$Site
   ) ;
   $SpeedThreshold = 100 ;
+  $rgxSpbDCRgx = 'CN=EDCMS'
   $ErrorActionPreference = 'SilentlyContinue' ; # Set so we don't see errors for the connectivity test
   $env:ADPS_LoadDefaultDrive = 0 ; $sName = "ActiveDirectory"; if ( !(Get-Module | Where-Object { $_.Name -eq $sName }) ) {
     if ($bDebug) { Write-Debug "Adding ActiveDirectory Module (`$script:ADPSS)" };
@@ -60,7 +62,21 @@ function get-GCFast {
   # gc filter
   #$LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) } ;
   #$LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) } ;
-  $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) -and (Domain -eq $Domain) } ;
+  # ISSUE: ==3:26 pm 3/7/2024: NO LOCAL SITE DC'S IN SPB
+  # os: LOGONSERVER=\\EDCMS8100
+  if( $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) -and (Domain -eq $Domain) }){
+  
+  } elseif($Site -eq 'Spellbrook'){
+        $smsg = "Get-ADDomainController -filter { (isglobalcatalog -eq `$true) -and (Site -eq $($Site)) -and (Domain -eq $($Domain)}"
+        $smsg += "`nFAILED to return DCs, and `$Site -eq Spellbrook:" 
+        $smsg += "`ndiverting to $($rgxSpbDCRgx) dcs in entire Domain:" ; 
+        write-warning $smsg ;
+        $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Domain -eq $Domain) } | 
+            ?{$_.ComputerObjectDN -match $rgxSpbDCRgx } 
+  } ; 
+  
+  
+  
   # any dc filter
   #$LocalDCs = Get-ADDomainController -filter {(Site -eq $Site)} ;
 
@@ -84,4 +100,5 @@ function get-GCFast {
     write-host -foregroundcolor yellow  "NO DCS RETURNED BY GET-GCFAST()!";
     write-output $false ;
   } ;
-} #*----------------^ END Function get-GCFast ^----------------
+} 
+#*----------------^ END Function get-GCFast ^----------------
