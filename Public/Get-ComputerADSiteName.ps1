@@ -44,7 +44,7 @@ function Get-ComputerADSiteName{
 	            $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
 	            if($LASTEXITCODE -eq 0){$site[0].trim() | write-output } else {write-warning "Unable to run  nltest /server:$($ComputerName) /dsgetsite successfully" } ; 
             } ; 
-        }
+        } ; 
 
         ```
        
