@@ -15,6 +15,7 @@ function get-ADUserViaUPN {
     Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell, ActiveDirectory, UserPrincipalName
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     * 10:57 AM 2/3/2022 init
     .DESCRIPTION
     get-ADUserViaUPN - get-ADUser wrapper that implements proper -EA STOP error return when using -filter {UPN -eq 'someupn@domain'}. 
@@ -187,7 +188,7 @@ function get-ADUserViaUPN {
     #>
     #Requires -Version 3
     #Requires -Modules verb-AAD, ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]

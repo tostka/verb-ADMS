@@ -18,6 +18,7 @@ function test-AADUserSync {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     * 12:16 PM 2/3/2022 requires block was triggering nesting error, so stripped back from abso minimum
     * 3:37 PM 1/28/2022 fixed error, due to un-instantiated $rpt (needed to be an explicit array, forgot to declare at top). 
     * 3:00 PM 1/26/2022 init
@@ -78,7 +79,7 @@ function test-AADUserSync {
     #>
     #Requires -Version 3
     #Requires -Modules MSOnline, verb-AAD, ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
 

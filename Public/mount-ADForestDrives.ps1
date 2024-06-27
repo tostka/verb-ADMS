@@ -18,6 +18,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection
     * 1:08 PM 1/31/2022 trimmed requires, dropping rem'd entries
     # 3:34 PM 6/9/2021 rev'd all echos to write-verbose only (silent op)
     # 12:24 PM 3/19/2021 added -NoTOL to suppress inaccessible TOL forest (until network opens up the blocked ports) ;  flipped userroles to array SID,ESVC,LSVC, trying to get it to *always* pull working acct (failing in CMW)
@@ -86,7 +87,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
     #>
     #Requires -Version 3
     #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage = "Switch to limit test to local 'TOR' forest [-TorOnly]")]

@@ -18,6 +18,7 @@ function unmount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection
     # 7:24 AM 10/23/2020 init 
     .DESCRIPTION
     unmount-ADForestDrives() - Unmount PSDrive objects mounted for cross-domain ADMS work (ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove solely those drives. Otherwise removes all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module)
@@ -54,7 +55,7 @@ function unmount-ADForestDrives {
     #>
     #Requires -Version 3
     #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
