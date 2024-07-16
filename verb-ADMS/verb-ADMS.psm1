@@ -1,11 +1,11 @@
-﻿# verb-adms.psm1
+﻿# verb-ADMS.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 3.1.0.0
+  Version     : 4.0.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -360,6 +360,7 @@ function get-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     # 1:05 PM 2/25/2021 init 
     .DESCRIPTION
     get-ADForestDrives() - Get PSDrive PSProvider:ActiveDirectoryobjects currently mounted (for cross-domain ADMS work - ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove list solely those drives. Otherwise get-psDrive's all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module). Returns matching objects.
@@ -377,7 +378,7 @@ function get-ADForestDrives {
     #>
     #Requires -Version 3
     #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
@@ -1190,6 +1191,200 @@ function get-ADSiteLocal {
 #*------^ get-ADSiteLocal.ps1 ^------
 
 
+#*------v get-ADUserDetailsTDO.ps1 v------
+Function get-ADUserDetailsTDO {
+        <#
+        .SYNOPSIS
+        get-ADUserDetailsTDO - Uses ADSI LDAP to retrieve AD User information  (wo need for full ActiveDirectory powershell module)
+        .NOTES
+        Version     : 2.0.5
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 2015-09-03
+        FileName    : get-ADUserDetailsTDO.ps1
+        License     : (none-asserted)
+        Copyright   : (none-asserted)
+        Github      : https://github.com/tostka/verb-adms
+        Tags        : Powershell, ActiveDirectory, User, Accounts, Security.Principal. SecurityIdentifier
+        AddedCredit : Ed Wilson
+        AddedWebsite: https://devblogs.microsoft.com/scripting/use-powershell-to-translate-a-users-sid-to-an-active-directory-account-name/
+        AddedTwitter: URL
+        REVISIONS
+        * 2:42 PM 5/29/2024 pulled -samaccountname default to $env:username, and shifted it to an example (keep from resolving, when -SID is specified); added explicit w-o's (rplc'd shell closing Exits); extended CBH); removed extraneous output formatting new-underling()
+            ren'd UserToSid-SidToUser.ps1 -> get-ADUserDetailsTDO; ren'd Get-UserToSid() -> _resolve-ADSamAccountNameToSID, Get-SidToUser() -> _resolve-ADSidToSamAccountName()
+        #10/12/2010 - posted version
+        .DESCRIPTION
+        get-ADUserDetailsTDO - Uses ADSI LDAP to retrieve AD User information  (wo need for full ActiveDirectory powershell module)
+
+        Extension of samples from on old ScriptingGuy post from 2010.
+        I've extended the basic SamAccountName <-> SID queries demo'd to include ADUser equiv lookup & return, and UPN & SamAccName return. 
+
+        .PARAMETER Domain
+        AD Domain hosting the target user [-Domain MyDom]
+        .PARAMETER SamAccountName
+        AD SamAccountName for the target user [-SamAccountName LnameFI]
+        .PARAMETER SID
+        AD Account SID value for target user [-SID S-n-n-nn-nnnnnnnnnn-nnnnnnnnn-nnnnnnnnnn-nnnnn]
+        .PARAMETER returnADUser
+        Switch to return the resolved user's ADUser properties [-returnADUser]
+        .PARAMETER returnUPN
+        Switch to return the resolved user's UserPrincipalName [-returnUPN]
+        .PARAMETER returnSamAccountName
+        Switch to return the resolved user's SamAccountName [-returnSamAccountName]
+        .INPUTS
+        [string]
+        .OUTPUTS
+        [string] UPN or SamAccountname
+        [pscustomobject] AD User properties         
+        .EXAMPLE
+        PS> $ADUser = get-ADUserDetailsTDO  -samaccountname “mytestuser”
+        Resolves the user samaccountname to the matching AD User details
+        .EXAMPLE
+        PS> $ADUser = get-ADUserDetailsTDO  -samaccountname $env:USERNAME
+        Resolves the username environment variable as samaccountname to the matching AD User details
+        .EXAMPLE
+        PS> $ADUser = get-ADUserDetailsTDO  -sid “S-1-5-21-1877799864.0.0120469-1066862428-500”
+        Resolves the user SID to the matching AD User details
+        .EXAMPLE
+        PS> $UPN = get-ADUserDetailsTDO  -samaccountname “mytestuser” -returnUPN
+        Resolves the user samaccountname to the matching AD User UserPrincipalName, assigns return to a variable
+        .EXAMPLE
+        PS> $SamaccountName = get-ADUserDetailsTDO  -samaccountname “mytestuser” -returnSamAccountName
+        Resolves the user samaccountname to the matching AD User returnSamAccountName, assigns return to a variable
+        .LINK
+        https://devblogs.microsoft.com/scripting/use-powershell-to-translate-a-users-sid-to-an-active-directory-account-name/
+        .LINK
+        https://github.com/tostka/verb-ADMS
+        #>
+        [CmdletBinding()]
+        #[Alias('Get-ExchangeServerInSite')]
+        PARAM(
+            [Parameter(HelpMessage="AD Domain hosting the target user [-Domain MyDom]")]
+                [string]$domain = $env:USERDOMAIN, 
+            [Parameter(Position=0,ValueFromPipeline=$true,HelpMessage="AD SamAccountName for the target user [-samaccountname LnameFI]")]
+                [Alias('user')]
+                [string]$SamAccountName, 
+            [Parameter(HelpMessage="AD Account SID value for target user [-SID S-n-n-nn-nnnnnnnnnn-nnnnnnnnn-nnnnnnnnnn-nnnnn]")]
+                [string]$sid,
+            [Parameter(HelpMessage="Switch to return the resolved user's ADUser properties [-returnADUser]")]
+                [switch]$returnADUser,
+            [Parameter(HelpMessage="Switch to return the resolved user's UserPrincipalName [-returnUPN]")]
+                [switch]$returnUPN,
+            [Parameter(HelpMessage="Switch to return the resolved user's SamAccountName [-returnSamAccountName]")]
+                [switch]$returnSamAccountName
+        ) ; 
+        BEGIN{
+            ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+            $Verbose = ($VerbosePreference -eq 'Continue') ;
+            $rPSBoundParameters = $PSBoundParameters ; 
+            $PSParameters = New-Object -TypeName PSObject -Property $rPSBoundParameters ;
+            write-verbose "`$rPSBoundParameters:`n$(($rPSBoundParameters|out-string).trim())" ;
+            #region BANNER ; #*------v BANNER v------
+            $sBnr="#*======v $(${CmdletName}): $($SamAccountName,$sid) v======" ;
+            $smsg = $sBnr ;
+            write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" ; 
+            #endregion BANNER ; #*------^ END BANNER ^------
+        } ;  # BEG-E
+        PROCESS{
+            TRY{
+                if(-not $SID -and $SamAccountName){
+                    $smsg = "Translate SamAccountname $($SamAccountname) to SID" ; 
+                    write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)"
+                    $ntAccount = new-object System.Security.Principal.NTAccount($domain, $SamAccountName) ; 
+                    $sid = $ntAccount.Translate([System.Security.Principal.SecurityIdentifier]) ; 
+                } ; 
+                write-host "Resolve SID to ADUser information (slow [adsi]LDAP:// query...)";
+                $account = [adsi]"LDAP://<SID=$($sid)>" ;
+                if( $returnUPN){
+                    $account.Properties["UserPrincipalName"] | Write-Output
+                }elseif($returnSamAccountName){
+                    $account.Properties["SamAccountName"] | Write-Output
+                }elseif($returnADUser -OR -not ($returnUPN -OR $returnSamAccountName)){
+                    $adout = $($account | select-object *) ; 
+                    <# empty object/no-matches return: Test .guid populated 
+                    AuthenticationType :
+                    Children           :
+                    Guid               :
+                    ObjectSecurity     :
+                    Name               :
+                    NativeGuid         :
+                    NativeObject       :
+                    Parent             :
+                    Password           :
+                    Path               :
+                    Properties         :
+                    SchemaClassName    :
+                    SchemaEntry        :
+                    UsePropertyCache   :
+                    Username           :
+                    Options            :
+                    Site               :
+                    Container          : 
+                    #>
+                    if($null -eq $adout.Guid ){
+                        
+                        $smsg = "No matching AD Object returned for:`n$(($PSParameters|out-string).trim())" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    } else {
+                        $smsg = "return resolved ADUser properties to pipeline" ; 
+                        write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+                        $adout | write-output ;                     
+                    } ; 
+                };
+            } CATCH [System.Management.Automation.MethodInvocationException]{
+                $ErrTrapd=$Error[0] ;
+                switch -Regex ($ErrTrapd.exception){
+                    'Some\sor\sall\sidentity\sreferences\scould\snot\sbe\stranslated\.'{
+                        $smsg = "Unable to resolve -SamAccountName '$($SamAccountName)' to an SID" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        break ; 
+                    } 
+                    default {
+                        $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    }
+                } ; 
+            } CATCH {
+                #$ErrTrapd=$Error[0] ;
+                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #
+                <# full trap
+                $ErrTrapd=$Error[0] ;
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $smsg = $ErrTrapd.Exception.Message ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #-=-record a STATUSWARN=-=-=-=-=-=-=
+                $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+                if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+                if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+                #-=-=-=-=-=-=-=-=
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                #>
+            } ; 
+            
+        } ;  # PROC-E
+        END{
+            $smsg = "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        } ; 
+    }
+
+#*------^ get-ADUserDetailsTDO.ps1 ^------
+
+
 #*------v get-ADUserViaUPN.ps1 v------
 function get-ADUserViaUPN {
     <#
@@ -1207,6 +1402,7 @@ function get-ADUserViaUPN {
     Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell, ActiveDirectory, UserPrincipalName
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     * 10:57 AM 2/3/2022 init
     .DESCRIPTION
     get-ADUserViaUPN - get-ADUser wrapper that implements proper -EA STOP error return when using -filter {UPN -eq 'someupn@domain'}. 
@@ -1379,7 +1575,7 @@ function get-ADUserViaUPN {
     #>
     #Requires -Version 3
     #Requires -Modules verb-AAD, ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]
@@ -1518,6 +1714,326 @@ function get-ADUserViaUPN {
 #*------^ get-ADUserViaUPN.ps1 ^------
 
 
+#*------v Get-ComputerADSiteName.ps1 v------
+function Get-ComputerADSiteName{
+    <#
+    .SYNOPSIS
+    Get-ComputerADSiteName - Return Active Directory site name for a remote Windows computer name (leverages the OS nltest command)
+    .NOTES
+    Version     : 0.1.2
+    Author      : Shay Levy
+    Website     : https://powershellmagazine.com/2013/04/23/pstip-get-the-ad-site-name-of-a-computer/
+    Twitter     : @ShayLevy
+    CreatedDate : 2024-03-13
+    FileName    : Get-ComputerADSiteName.ps1
+    License     : (nond asserted)
+    Copyright   : (nond asserted)
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,Site,Computer
+    AddedCredit : Todd Kadrie
+    AddedWebsite: http://www.toddomation.comgci 
+    AddedTwitter: @tostka / http://twitter.com/tostka
+    REVISIONS
+    * 9:22 AM 3/13/2024 1.1.1 updated: add CBH, expand error handling, validate nltest is avail, tagged outputs w explicit w-o
+    * 11/12/23 v1.1 - PowershellMagazine.com posted article 
+    .DESCRIPTION
+    Get-ComputerADSiteName - Return Active Directory site name for a remote Windows computer name (leverages the OS nltest command)
+
+    Minor tweaking - add CBH, expand error handling, validate nltest is avail -  to Shay Levy's simple function for obtaining remote computer AD SiteName by leveraging the nltest cmdline util
+
+    [#PSTip Get the AD site name of a computer](https://powershellmagazine.com/2013/04/23/pstip-get-the-ad-site-name-of-a-computer/)
+
+    Stripped down portable/pastable copy (no CBH, e.g. Shay Levy's stripped down exmple w minor upgrades from this func; still pasteable into other scripts wo tweaking)
+
+        ```Powershell
+        function Get-ComputerADSiteName{
+            [CmdletBinding()]
+            Param(
+                [Parameter(Position = 0, ValueFromPipeline = $true,HelpMessage="Computername for site lookup")]
+                    [string]$ComputerName = $Env:COMPUTERNAME        
+            ) ; 
+            BEGIN { TRY{get-command nltest -ea STOP | out-null}CATCH{write-warning "missing dependnant nltest util!" ; break }} ;
+            PROCESS {
+                write-verbose $ComputerName ;
+	            $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
+	            if($LASTEXITCODE -eq 0){$site[0].trim() | write-output } else {write-warning "Unable to run  nltest /server:$($ComputerName) /dsgetsite successfully" } ; 
+            } ; 
+        } ; 
+
+        ```
+       
+    .PARAMETER  Computername
+    Computername for site lookup
+    Defaults to %COMPUTERNAME%
+    .INPUTS
+    Accepts piped input.
+    .OUTPUTS
+    String AD SiteName
+    .EXAMPLE
+    PS>Get-ComputerADSiteName -ComputerName PC123456789
+        
+        EULON01
+
+    Demo resolution of computername to sitename
+    .EXAMPLE
+    'Server1','Server2' | Get-ComputerADSiteName -verbose
+
+        VERBOSE: Server1
+        Site1
+        VERBOSE: Server2
+        Site2
+
+    Demo resolution of array of computernames through pipeline, with verbose output
+    .LINK
+    https://powershellmagazine.com/2013/04/23/pstip-get-the-ad-site-name-of-a-computer/
+    .LINK
+    https://gist.github.com/gbdixg/5cd6ea0c984278b08b36260ada0e3f9c
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding()]
+    Param(
+        [Parameter(Position = 0, ValueFromPipeline = $true,HelpMessage="Computername for site lookup")]
+            [string]$ComputerName = $Env:COMPUTERNAME        
+    ) ; 
+    BEGIN { TRY{get-command nltest -ea STOP | out-null}CATCH{write-warning "missing dependnant nltest util!" ; break }} ;
+    PROCESS {
+        write-verbose $ComputerName ;
+	    $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
+	    if($LASTEXITCODE -eq 0){$site[0].trim() | write-output } else {write-warning "Unable to run  nltest /server:$($ComputerName) /dsgetsite successfully" } ; 
+    } ; 
+}
+
+#*------^ Get-ComputerADSiteName.ps1 ^------
+
+
+#*------v Get-ComputerADSiteSummary.ps1 v------
+Function Get-ComputerADSiteSummary {
+    <#
+    .SYNOPSIS
+    Get-ComputerADSiteSummary - Used to get the Active Directory subnet and the site it is assigned to for a remote Windows computer/IP address
+    .NOTES
+    Version     : 1.1.1
+    Author      : gbdixg/GD
+    Website     : write-verbose.com
+    Twitter     : @writeverbose / http://twitter.com/writeverbose
+    CreatedDate : 2024-03-13
+    FileName    : Get-ComputerADSiteSummary.ps1
+    License     : MIT License
+    Copyright   : (c) 2024 Todd Kadrie
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,Site,Computer
+    AddedCredit : Todd Kadrie
+    AddedWebsite: http://www.toddomation.com
+    AddedTwitter: @tostka / http://twitter.com/tostka
+    REVISIONS
+    * 12:24 PM 3/13/2024 ren:Find-ADSite -> Get-ComputerADSiteSummary  1.1.1 updated CBH; tagged outputs w explicit w-o 
+    * 11/12/23 v1.1 - current posted GitHub Gist version
+    .DESCRIPTION
+    Get-ComputerADSiteSummary - Used to get the Active Directory subnet and the site it is assigned to for a Windows computer/IP address
+     Requires only standard user read access to AD and can determine the ADSite for a local or remote computer
+
+     Shay Levy also demo's a much simplified variant for obtaining remote computer AD SiteName by leveraging the nltest cmdline util:
+
+    function Get-ComputerADSite($ComputerName){
+	    $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
+	    if($LASTEXITCODE -eq 0){ $site[0] } ; 
+    }
+
+    .PARAMETER  IPAddress
+    Specifies the IP Address for the subnet/site lookup in as a .NET System.Net.IPAddress
+    When this parameter is used, the computername is not specified.
+    .PARAMETER  Computername
+    Specifies a computername for the subnet/site lookup.
+    The computername is resolved to an IP address before performing the subnet query.
+    Defaults to %COMPUTERNAME%
+    When this parameter is used, the IPAddress and IP are not specified.
+    .PARAMETER  DC
+    A specific domain controller in the current users domain for the subnet query
+    If not specified, standard DC locator methods are used.
+    .PARAMETER  AllMatches
+    A switch parameter that causes the subnet query to return all matching subnets in AD
+    This is not normally used as the default behaviour (only the most specific match is returned) is usually prefered.
+    This switch will include "catch-all" subnets that may be defined to accomodate missing subnets
+    .PARAMETER showDebug
+    Debugging Flag [-showDebug]
+    .PARAMETER whatIf
+    Whatif Flag  [-whatIf]
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    System.Object summary of IPAddress, Subnet and AD SiteName
+    .EXAMPLE
+    PS>Get-ComputerADSiteSummary -ComputerName PC123456789
+
+        ComputerName      : PC123456789
+        IPAddress         : 162.26.192.151
+        ADSubnetName      : 162.26.192.128/25
+        ADSubnetDesc      : 3rd Floor Main Road Office
+        ADSiteName        : EULON01
+        ADSiteDescription : London
+    Demo's resolving computername to Site details
+    .EXAMPLE
+    PS>$SiteSummary = get-computeradsitesummary -IPAddress 192.168.5.15
+    Demos resolving IP address to AD Site summary, and assigning return to a variable.
+    .LINK
+    https://write-verbose.com/2019/04/13/Get-ComputerADSiteSummary/
+    .LINK
+    https://gist.github.com/gbdixg/5cd6ea0c984278b08b36260ada0e3f9c
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding(DefaultParameterSetName = "byHost")]
+    Param(
+        [Parameter(Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $True, ParameterSetName = "byHost")]
+            [string]$ComputerName = $Env:COMPUTERNAME,
+        [Parameter(Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $True, Mandatory = $True, ParameterSetName = "byIPAddress")]
+            [System.Net.IPAddress]$IPAddress,
+        [Parameter(Position = 1)]
+            [string]$DC,
+        [Parameter()]
+            [switch]$AllMatches
+    )
+    PROCESS {
+        switch ($pscmdlet.ParameterSetName) {
+            "byHost" {
+                TRY {
+                    $Resolved = [system.net.dns]::GetHostByName($Computername)
+                    [System.Net.IPAddress]$IP = ($Resolved.AddressList)[0] -as [System.Net.IPAddress]
+                }CATCH{
+                    Write-Warning "$ComputerName :: Unable to resolve name to an IP Address"
+                    $IP = $Null
+                }
+            }
+            "byIPAddress" {
+                TRY {
+                    $Resolved = [system.net.dns]::GetHostByAddress($IPAddress)
+                    $ComputerName = $Resolved.HostName
+                } CATCH {
+                    # Write-Warning "$IP :: Could not be resolved to a hostname"
+                    $ComputerName = "Unable to resolve"
+                }
+                $IP = $IPAddress
+            }
+
+        }#switch
+    
+        if($PSBoundParameters.ContainsKey("DC")){
+            $DC+="/"
+        }
+
+        if ($IP) {
+            # The following maths loops over all the possible subnet mask lengths
+            # The masks are converted into the number of Bits to allow conversion to CIDR format
+            # The script tries to lookup every possible range/subnet bits combination and keeps going until it finds a hit in AD
+
+            [psobject[]]$MatchedSubnets = @()
+
+            For ($bit = 30 ; $bit -ge 1; $bit--) {
+                [int]$octet = [math]::Truncate(($bit - 1 ) / 8)
+                $net = [byte[]]@()
+
+                for ($o = 0; $o -le 3; $o++) {
+                    $ba = $ip.GetAddressBytes()
+                    if ($o -lt $Octet) {
+                        $Net += $ba[$o]
+                    } ELSEIF ($o -eq $octet) {
+                        $factor = 8 + $Octet * 8 - $bit
+                        $Divider = [math]::pow(2, $factor)
+                        $value = $divider * [math]::Truncate($ba[$o] / $divider)
+                        $Net += $value
+                    } ELSE {
+                        $Net += 0
+                    }
+                } #Next
+
+                #Format network in CIDR notation
+                $Network = [string]::join('.', $net) + "/$bit"
+
+                # Try to find this Network in AD Subnets list
+                Write-Verbose "Trying : $Network"
+                TRY{
+                    $de = New-Object System.DirectoryServices.DirectoryEntry("LDAP://" + $DC + "rootDSE")
+                    $Root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$DC$($de.configurationNamingContext)")
+                    $ds = New-Object System.Directoryservices.DirectorySearcher($root)
+                    $ds.filter = "(CN=$Network)"
+                    $Result = $ds.findone()
+                }CATCH{
+                    $Result = $null
+                }
+
+                if ($Result) {
+                    write-verbose "AD Site found for $IP"
+
+                    # Try to split out AD Site from LDAP path
+                    $SiteDN = $Result.GetDirectoryEntry().siteObject
+                    $SiteDe = New-Object -TypeName System.DirectoryServices.DirectoryEntry("LDAP://$SiteDN")
+                    $ADSite = $SiteDe.Name[0]
+                    $ADSiteDescription = $SiteDe.Description[0]
+
+                    $MatchedSubnets += [PSCustomObject][Ordered]@{
+                        ComputerName = $ComputerName
+                        IPAddress    = $IP.ToString()
+                        ADSubnetName = $($Result.properties.name).ToString()
+                        ADSubnetDesc = "$($Result.properties.description)"
+                        ADSiteName       = $ADSite
+                        ADSiteDescription = $ADSiteDescription
+                    }
+                    $bFound = $true
+                }#endif
+            }#next
+
+        }#endif
+        if ($bFound) {
+
+            if ($AllMatches) {
+                # output all the matched subnets
+                $MatchedSubnets | write-output ;
+            } else {
+
+                # Only output the subnet with the largest mask bits
+                [Int32]$MaskBits = 0 # initial value
+
+                Foreach ($MatchedSubnet in $MatchedSubnets) {
+
+                    if ($MatchedSubnet.ADSubnetName -match "\/(?<Bits>\d+)$") {
+                        [Int32]$ThisMaskBits = $Matches['Bits']
+                        Write-Verbose "ThisMaskBits = '$ThisMaskBits'"
+
+                        if ($ThisMaskBits -gt $MaskBits) {
+                            # This is a more specific subnet
+                            $OutputSubnet = $MatchedSubnet
+                            $MaskBits = $ThisMaskBits
+
+                        } else {
+                            Write-Verbose "No match"
+                        }
+                    } else {
+                        Write-Verbose "No match"
+                    }
+                }
+                $OutputSubnet | write-output ;
+            }#endif
+        } else {
+
+            Write-Verbose "AD Subnet not found for $IP"
+            if ($IP -eq $null) {$IP = ""} # required to prevent exception on ToString() below
+
+            New-Object -TypeName PSObject -Property @{
+                ComputerName = $ComputerName
+                IPAddress    = $IP.ToString()
+                ADSubnetName = "Not found"
+                ADSubnetDesc = ""
+                ADSiteName   = ""
+                ADSiteDescription = ""
+            } | write-output  ; 
+        }#end if
+    }#process
+}
+
+#*------^ Get-ComputerADSiteSummary.ps1 ^------
+
+
 #*------v get-DCLocal.ps1 v------
 Function get-DCLocal {
     <#
@@ -1597,6 +2113,7 @@ function get-GCFast {
     Additional Credits: Originated in Ben Lye's GetLocalDC()
     Website:	http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 3:38 PM 3/7/2024 SPB Site:Spellbrook no longer has *any* GCs: coded in a workaround and discvoer domain-wide filtering for CN=EDC.* gcs (as spb servers use EDCMS8100 AS LOGONDC)
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
     # 2:19 PM 4/29/2019 add [lab dom] to the domain param validateset & site lookup code, also copied into tsksid-incl-ServerCore.ps1
     # 2:39 PM 8/9/2017 ADDED some code to support labdom.com, also added test that $LocalDcs actually returned anything!
@@ -1627,6 +2144,7 @@ function get-GCFast {
     [string]$Site
   ) ;
   $SpeedThreshold = 100 ;
+  $rgxSpbDCRgx = 'CN=EDCMS'
   $ErrorActionPreference = 'SilentlyContinue' ; # Set so we don't see errors for the connectivity test
   $env:ADPS_LoadDefaultDrive = 0 ; $sName = "ActiveDirectory"; if ( !(Get-Module | Where-Object { $_.Name -eq $sName }) ) {
     if ($bDebug) { Write-Debug "Adding ActiveDirectory Module (`$script:ADPSS)" };
@@ -1646,7 +2164,21 @@ function get-GCFast {
   # gc filter
   #$LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) } ;
   #$LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) } ;
-  $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) -and (Domain -eq $Domain) } ;
+  # ISSUE: ==3:26 pm 3/7/2024: NO LOCAL SITE DC'S IN SPB
+  # os: LOGONSERVER=\\EDCMS8100
+  if( $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) -and (Domain -eq $Domain) }){
+  
+  } elseif($Site -eq 'Spellbrook'){
+        $smsg = "Get-ADDomainController -filter { (isglobalcatalog -eq `$true) -and (Site -eq $($Site)) -and (Domain -eq $($Domain)}"
+        $smsg += "`nFAILED to return DCs, and `$Site -eq Spellbrook:" 
+        $smsg += "`ndiverting to $($rgxSpbDCRgx) dcs in entire Domain:" ; 
+        write-warning $smsg ;
+        $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Domain -eq $Domain) } | 
+            ?{$_.ComputerObjectDN -match $rgxSpbDCRgx } 
+  } ; 
+  
+  
+  
   # any dc filter
   #$LocalDCs = Get-ADDomainController -filter {(Site -eq $Site)} ;
 
@@ -2596,6 +3128,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection
     * 1:08 PM 1/31/2022 trimmed requires, dropping rem'd entries
     # 3:34 PM 6/9/2021 rev'd all echos to write-verbose only (silent op)
     # 12:24 PM 3/19/2021 added -NoTOL to suppress inaccessible TOL forest (until network opens up the blocked ports) ;  flipped userroles to array SID,ESVC,LSVC, trying to get it to *always* pull working acct (failing in CMW)
@@ -2664,7 +3197,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
     #>
     #Requires -Version 3
     #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage = "Switch to limit test to local 'TOR' forest [-TorOnly]")]
@@ -2997,6 +3530,7 @@ function test-AADUserSync {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     * 12:16 PM 2/3/2022 requires block was triggering nesting error, so stripped back from abso minimum
     * 3:37 PM 1/28/2022 fixed error, due to un-instantiated $rpt (needed to be an explicit array, forgot to declare at top). 
     * 3:00 PM 1/26/2022 init
@@ -3057,7 +3591,7 @@ function test-AADUserSync {
     #>
     #Requires -Version 3
     #Requires -Modules MSOnline, verb-AAD, ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
 
@@ -3577,6 +4111,7 @@ function unmount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection
     # 7:24 AM 10/23/2020 init 
     .DESCRIPTION
     unmount-ADForestDrives() - Unmount PSDrive objects mounted for cross-domain ADMS work (ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove solely those drives. Otherwise removes all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module)
@@ -3613,7 +4148,7 @@ function unmount-ADForestDrives {
     #>
     #Requires -Version 3
     #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
@@ -3726,7 +4261,7 @@ Function test-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserViaUPN,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,test-Password -Alias *
+Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserDetailsTDO,get-ADUserViaUPN,Get-ComputerADSiteName,Get-ComputerADSiteSummary,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,test-Password -Alias *
 
 
 
@@ -3734,8 +4269,8 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUASQ6uj6z2oufpyKUHqJRqeyY
-# nuGgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtc0syqllZhkH94rdZ8dmTay3
+# k2OgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3750,9 +4285,9 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRf5Sl6
-# 4C1gcHWwYa+jt40e69UDiDANBgkqhkiG9w0BAQEFAASBgDlmRJ/puJ01Wfid8P5s
-# um2b7fYJ7rNUIV5IfPEKR/wkC78u46k6X8V75YK/WK15HmVYoHm2wmpXhjxFsAsJ
-# oMPzC8ZPlbPhXiSm0cr/sJrWk29gw3rpQXPM2GnNjS/CEyoHWNGd6W2qi4wsGEMo
-# RijSncdj7aPIXDc25ZVKSCcG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRudC9Z
+# rhNz9IpxLDhrnISqmz8fGTANBgkqhkiG9w0BAQEFAASBgGU3v0tDmZWOiz6N+Y8O
+# PA1P4j2kFynCYacPOpmbYUBLsfkkj8TbN+xQAbStgEPCQqjv4xdUlI//MyGFrvxH
+# CQE/86KEr7c9gezNfQUJjlBFvFLl6ddCA9/oTzk1/Yq7CRu6louV9iXB/GSvCo6L
+# H+p+zLtCCEnTsPhJNelA0uAv
 # SIG # End signature block
