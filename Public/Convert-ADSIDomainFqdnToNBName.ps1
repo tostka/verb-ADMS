@@ -58,7 +58,7 @@ function Convert-ADSIDomainFqdnToNBName {
     } ;  # BEG-E
     PROCESS {
         foreach($item in $DomainFqdn){
-			
+            
 			$objRootDSE = [System.DirectoryServices.DirectoryEntry] "LDAP://rootDSE" ; 
 			$ConfigurationNC= $objRootDSE.configurationNamingContext ; 
 			$Searcher = New-Object System.DirectoryServices.DirectorySearcher  ; 
@@ -67,7 +67,7 @@ function Convert-ADSIDomainFqdnToNBName {
 			$Searcher.SearchRoot = "LDAP://cn=Partitions,$ConfigurationNC" ; 
 			$searcher.Filter = "(&(objectcategory=Crossref)(dnsRoot=$item)(netBIOSName=*))" ; 
 			($Searcher.FindOne()).Properties.Item("nETBIOSName") | write-output ; 
-        } ;  
+        } ;  # loop-E
     } ;  # PROC-E
     END {
         write-verbose "(Convert-ADSIDomainFqdnToNBName:End)" ; 
