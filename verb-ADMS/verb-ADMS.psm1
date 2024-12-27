@@ -1,11 +1,11 @@
-﻿# verb-ADMS.psm1
+﻿# verb-adms.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 4.0.0.0
+  Version     : 4.1.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -74,6 +74,83 @@
 #*======v FUNCTIONS v======
 
 
+
+
+#*------v Convert-ADSIDomainFqdnToNBName.ps1 v------
+function Convert-ADSIDomainFqdnToNBName {
+    <#
+    .SYNOPSIS
+    Convert-ADSIDomainFqdnToNBName.ps1 - Convert the ADDomain FQDN to the matching NetbiosName, using ADSI (no-dependancy on Windows)
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2024-11-13
+    FileName    : Convert-ADSIDomainFqdnToNBName.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,ADSite,Computer,ADSI
+    AddedCredit : Alan Kaplan
+    AddedWebsite: https://akaplan.com/author/admin/
+    AddedTwitter: 
+    REVISIONS
+    * 1:28 PM 11/13/2024 init, expanded, added CBH etc to AK's blog post scriptblock
+    * 1/30/17: AK's blog post (link below)
+    .DESCRIPTION
+    Convert-ADSIDomainFqdnToNBName.ps1 - Convert the ADDomain FQDN to the matching NetbiosName, using ADSI (no-dependancy on Windows)
+    
+    Expansion & wrap of scriptblock demo from Alan Kaplan's blog post:
+    [Get the NetBIOS AD Domain Name from the FQDN – Alan's Blog](https://akaplan.com/2017/01/get-the-netbios-ad-domain-name-from-the-fqdn/)
+    
+    .PARAMETER Name
+    Array of System Names to test (defaults to local machine)[-Name SomeBox]
+    .EXAMPLE
+    $DomNBName = Convert-ADSIDomainFqdnToNBName  -
+    Return Netbiosname for specified AD Domain FQDN
+    .EXAMPLE
+    $DomNBName = Convert-ADSIDomainFqdnToNBName -Name somebox
+    Return remote computer DomNBName name
+    .LINK
+    https://akaplan.com/2017/01/get-the-netbios-ad-domain-name-from-the-fqdn/
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding()]
+    PARAM (
+        [parameter(ValueFromPipeline=$true,HelpMessage="Array of System Names to test (defaults to local machine)[-Name SomeBox]")]
+        [Alias('Domain')]
+        [string[]]$DomainFqdn
+    ) ; 
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+        if ($PSCmdlet.MyInvocation.ExpectingInput) {
+            write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
+        } else {
+            #write-verbose "Data received from parameter input: '$($InputObject)'" ; 
+            write-verbose "(non-pipeline - param - input)" ; 
+        } ; 
+    } ;  # BEG-E
+    PROCESS {
+        foreach($item in $DomainFqdn){
+            
+			$objRootDSE = [System.DirectoryServices.DirectoryEntry] "LDAP://rootDSE" ; 
+			$ConfigurationNC= $objRootDSE.configurationNamingContext ; 
+			$Searcher = New-Object System.DirectoryServices.DirectorySearcher  ; 
+			$Searcher.SearchScope = "subtree"  ; 
+			$Searcher.PropertiesToLoad.Add("nETBIOSName")| Out-Null ; 
+			$Searcher.SearchRoot = "LDAP://cn=Partitions,$ConfigurationNC" ; 
+			$searcher.Filter = "(&(objectcategory=Crossref)(dnsRoot=$item)(netBIOSName=*))" ; 
+			($Searcher.FindOne()).Properties.Item("nETBIOSName") | write-output ; 
+        } ;  # loop-E
+    } ;  # PROC-E
+    END {
+        write-verbose "(Convert-ADSIDomainFqdnToNBName:End)" ; 
+    } ; 
+}
+
+#*------^ Convert-ADSIDomainFqdnToNBName.ps1 ^------
 
 
 #*------v find-SiteRoleOU.ps1 v------
@@ -1244,7 +1321,7 @@ Function get-ADUserDetailsTDO {
         PS> $ADUser = get-ADUserDetailsTDO  -samaccountname $env:USERNAME
         Resolves the username environment variable as samaccountname to the matching AD User details
         .EXAMPLE
-        PS> $ADUser = get-ADUserDetailsTDO  -sid “S-1-5-21-1877799864.0.0120469-1066862428-500”
+        PS> $ADUser = get-ADUserDetailsTDO  -sid “S-1-5-21-1877799863-120120469-1066862428-500”
         Resolves the user SID to the matching AD User details
         .EXAMPLE
         PS> $UPN = get-ADUserDetailsTDO  -samaccountname “mytestuser” -returnUPN
@@ -3495,8 +3572,29 @@ function resolve-ADRightsGuid {
 
 #*------v Sync-AD.ps1 v------
 Function Sync-AD { 
-    # let's you trigger a replication between DCs. This function needs further tweaks for re-usability
-    # from dsoldow's https://github.com/dsolodow/IndyPoSH/blob/master/Profile.ps1
+    <#
+    .SYNOPSIS
+    Triggers a replication between Domain Controllers (DCs).
+    .NOTES
+    Version: 1.0.0
+    Author: [Your Name]
+    CreatedDate: [Creation Date]
+    FileName: Sync-AD.ps1
+    Source: Adapted from dsoldow's script at https://github.com/dsolodow/IndyPoSH/blob/master/Profile.ps1
+    .DESCRIPTION
+    The `Sync-AD` function allows you to trigger a replication between specified Domain Controllers (DCs). This function can be customized further for reusability. It uses the `repadmin` tool to perform the replication.
+    .PARAMETER DestinationDC
+    The destination Domain Controller for the replication. Defaults to 'centralDC'.
+    .PARAMETER SourceDC
+    The source Domain Controller for the replication. Defaults to 'localDC'.
+    .PARAMETER DirectoryPartition
+    The directory partition to replicate. Defaults to 'YourDomainName'.
+    .EXAMPLE
+    PS C:\> Sync-AD -DestinationDC 'centralDC' -SourceDC 'localDC' -DirectoryPartition 'YourDomainName'
+    This command triggers a replication from 'localDC' to 'centralDC' for the specified directory partition.
+    .LINK
+    https://github.com/dsolodow/IndyPoSH/blob/master/Profile.ps1
+    #>
     [CmdletBinding()]
     Param (
     [parameter(Mandatory = $false,Position=0)] [String]$DestinationDC = 'centralDC',
@@ -4261,7 +4359,7 @@ Function test-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserDetailsTDO,get-ADUserViaUPN,Get-ComputerADSiteName,Get-ComputerADSiteSummary,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,test-Password -Alias *
+Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserDetailsTDO,get-ADUserViaUPN,Get-ComputerADSiteName,Get-ComputerADSiteSummary,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,test-Password -Alias *
 
 
 
@@ -4269,8 +4367,8 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtc0syqllZhkH94rdZ8dmTay3
-# k2OgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6FGAiZ+fau4MeghRNzK91gKg
+# I26gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4285,9 +4383,9 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRudC9Z
-# rhNz9IpxLDhrnISqmz8fGTANBgkqhkiG9w0BAQEFAASBgGU3v0tDmZWOiz6N+Y8O
-# PA1P4j2kFynCYacPOpmbYUBLsfkkj8TbN+xQAbStgEPCQqjv4xdUlI//MyGFrvxH
-# CQE/86KEr7c9gezNfQUJjlBFvFLl6ddCA9/oTzk1/Yq7CRu6louV9iXB/GSvCo6L
-# H+p+zLtCCEnTsPhJNelA0uAv
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRZflFV
+# bM1VGZ0qZT10AEenu+kDpzANBgkqhkiG9w0BAQEFAASBgHa6QriPtCXXjveGHljr
+# iz8xMoHdYl2sxsv0nPgTGb9qID0rSHQBmVLB9z4+zmE98ZNPkB+2ccQwz9C3HPbt
+# 6Y9iomkLEWaHjRTzlzM7BpDRjQTpPccXdcHNWA5e/6U2lvK0hos7tpYLMXtsrDZi
+# ekcRK696pzpFHyUOqwk+3Jsh
 # SIG # End signature block
