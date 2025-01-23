@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 2.2.0.0
+  Version     : 4.1.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -74,6 +74,83 @@
 #*======v FUNCTIONS v======
 
 
+
+
+#*------v Convert-ADSIDomainFqdnToNBName.ps1 v------
+function Convert-ADSIDomainFqdnToNBName {
+    <#
+    .SYNOPSIS
+    Convert-ADSIDomainFqdnToNBName.ps1 - Convert the ADDomain FQDN to the matching NetbiosName, using ADSI (no-dependancy on Windows)
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2024-11-13
+    FileName    : Convert-ADSIDomainFqdnToNBName.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,ADSite,Computer,ADSI
+    AddedCredit : Alan Kaplan
+    AddedWebsite: https://akaplan.com/author/admin/
+    AddedTwitter: 
+    REVISIONS
+    * 1:28 PM 11/13/2024 init, expanded, added CBH etc to AK's blog post scriptblock
+    * 1/30/17: AK's blog post (link below)
+    .DESCRIPTION
+    Convert-ADSIDomainFqdnToNBName.ps1 - Convert the ADDomain FQDN to the matching NetbiosName, using ADSI (no-dependancy on Windows)
+    
+    Expansion & wrap of scriptblock demo from Alan Kaplan's blog post:
+    [Get the NetBIOS AD Domain Name from the FQDN – Alan's Blog](https://akaplan.com/2017/01/get-the-netbios-ad-domain-name-from-the-fqdn/)
+    
+    .PARAMETER Name
+    Array of System Names to test (defaults to local machine)[-Name SomeBox]
+    .EXAMPLE
+    $DomNBName = Convert-ADSIDomainFqdnToNBName  -
+    Return Netbiosname for specified AD Domain FQDN
+    .EXAMPLE
+    $DomNBName = Convert-ADSIDomainFqdnToNBName -Name somebox
+    Return remote computer DomNBName name
+    .LINK
+    https://akaplan.com/2017/01/get-the-netbios-ad-domain-name-from-the-fqdn/
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding()]
+    PARAM (
+        [parameter(ValueFromPipeline=$true,HelpMessage="Array of System Names to test (defaults to local machine)[-Name SomeBox]")]
+        [Alias('Domain')]
+        [string[]]$DomainFqdn
+    ) ; 
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+        if ($PSCmdlet.MyInvocation.ExpectingInput) {
+            write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
+        } else {
+            #write-verbose "Data received from parameter input: '$($InputObject)'" ; 
+            write-verbose "(non-pipeline - param - input)" ; 
+        } ; 
+    } ;  # BEG-E
+    PROCESS {
+        foreach($item in $DomainFqdn){
+            
+			$objRootDSE = [System.DirectoryServices.DirectoryEntry] "LDAP://rootDSE" ; 
+			$ConfigurationNC= $objRootDSE.configurationNamingContext ; 
+			$Searcher = New-Object System.DirectoryServices.DirectorySearcher  ; 
+			$Searcher.SearchScope = "subtree"  ; 
+			$Searcher.PropertiesToLoad.Add("nETBIOSName")| Out-Null ; 
+			$Searcher.SearchRoot = "LDAP://cn=Partitions,$ConfigurationNC" ; 
+			$searcher.Filter = "(&(objectcategory=Crossref)(dnsRoot=$item)(netBIOSName=*))" ; 
+			($Searcher.FindOne()).Properties.Item("nETBIOSName") | write-output ; 
+        } ;  # loop-E
+    } ;  # PROC-E
+    END {
+        write-verbose "(Convert-ADSIDomainFqdnToNBName:End)" ; 
+    } ; 
+}
+
+#*------^ Convert-ADSIDomainFqdnToNBName.ps1 ^------
 
 
 #*------v find-SiteRoleOU.ps1 v------
@@ -360,6 +437,7 @@ function get-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     # 1:05 PM 2/25/2021 init 
     .DESCRIPTION
     get-ADForestDrives() - Get PSDrive PSProvider:ActiveDirectoryobjects currently mounted (for cross-domain ADMS work - ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove list solely those drives. Otherwise get-psDrive's all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module). Returns matching objects.
@@ -377,7 +455,7 @@ function get-ADForestDrives {
     #>
     #Requires -Version 3
     #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
@@ -546,6 +624,527 @@ function get-ADRootSiteOUs {
 #*------^ get-ADRootSiteOUs.ps1 ^------
 
 
+#*------v Get-ADSIComputerByGuid.ps1 v------
+Function Get-ADSIComputerByGuid {
+    <#
+    .SYNOPSIS
+    Get-ADSIComputerByGuid.ps1 - Dependency-less function to retrieve an AD computer object using it's AD object guid. Uses nothing more than windows native ADSI ActiveDirectory support - present in all Windows machines. 
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2023-08-30
+    FileName    : Get-ADSIComputerByGuid.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-adms
+    Tags        : Powershell,ADSI,ActiveDirectory,Computer
+    AddedCredit : Ro Yo Mi
+    AddedWebsite:	https://serverfault.com/users/171487/ro-yo-mi
+    AddedTwitter:	URL
+    AddedCredit : François-Xavier Cat
+    AddedWebsite:	https://lazywinadmin.github.io/
+    AddedTwitter:	@lazywinadmin / https://twitter.com/lazywinadmin
+    REVISIONS
+    * 9:06 AM 9/26/2023 working (add to vad);  cleanup comment, updated CBH
+    * 4:56 PM 8/30/2023 init
+    * 6/19/2023 Ro Yo Mi's posted code sample
+    * 10/30/2013 lazywinadmin's original post
+    .DESCRIPTION
+    Get-ADSIComputerByGuid.ps1 - Dependency-less function to retrieve an AD computer object using it's AD object guid. Uses nothing more than windows native ADSI ActiveDirectory support - present in all Windows machines. 
+    .PARAMETER  GUID
+    Guid for computer object to be returned[-GUID 'nenncnnb-ennn-nfnc-nnnn-nnnnnnnnanne'
+    .PARAMETER LDAPserver
+    Domain to be searched[-LDAPserver 'sub.domain.com']
+    .EXAMPLE
+    PS> get-adsicomputerbyguid -GUID nfbn-nden-nban-nbn-ncnedfn5 -LDAPserver sub.domain.com  ; 
+
+    DNShostName                  Description                                       Name
+    -----------                  -----------                                       ----
+    AAAAAnnnn.AAAAAA.AA.AAAA.AAA DESCRIPTION                                       AAAAAnnnn
+    
+    Query specified server using it's ADComputer object's guid
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    .LINK
+    https://serverfault.com/questions/310529/search-ad-by-guid
+    .LINK
+    https://lazywinadmin.com/2013/10/powershell-get-domaincomputer-adsi.html
+    #>
+    [CmdletBinding()]
+    PARAM(
+      [Parameter(Position=0,ValueFromPipeline=$true, Mandatory=$true, HelpMessage="Guid for computer object to be returned[-GUID 'nenncnnb-ennn-nfnc-nnnn-nnnnnnnnanne'")]
+          [String[]]$GUID,
+      [Parameter(Mandatory=$true, HelpMessage="Domain to be searched[-LDAPserver 'sub.domain.com']")]
+      $LDAPserver
+    ) ;       
+    PROCESS{
+        FOREACH ($item in $GUID){
+            $GetItem  = "GUID=$($item)" ;
+            TRY{$DistinguishedName = $([ADSI]"LDAP://$($LDAPserver)/<$($GetItem)>").DistinguishedName} CATCH {$_ | fl * -Force; continue} ;
+            if($DistinguishedName){
+                TRY{
+                    $Searcher = [ADSISearcher] ([ADSI] "LDAP://$($LDAPserver)") ;
+                    $Searcher.Filter = "(&(objectCategory=Computer)(DistinguishedName=$($DistinguishedName)))"
+                    FOREACH ($Computer in $($Searcher.FindAll())){
+                        New-Object -TypeName PSObject -Property @{
+                            "Name" = $($Computer.properties.name)
+                            "DNShostName"    = $($Computer.properties.dnshostname)
+                            "Description" = $($Computer.properties.description)
+                        } | write-output ; 
+                    } ; 
+                } CATCH {$_ | fl * -Force; continue} 
+            } else {throw "$($GetItem) failed to return a matching DistinguishedName" }; 
+        } ; 
+    } ; 
+}
+
+#*------^ Get-ADSIComputerByGuid.ps1 ^------
+
+
+#*------v Get-ADSIObjectByGuid.ps1 v------
+Function Get-ADSIObjectByGuid {
+    <#
+    .SYNOPSIS
+    Get-ADSIObjectByGuid.ps1 - Dependency-less function to retrieve an AD object - computer|group|contact - using it's AD object guid. Uses nothing more than windows native ADSI ActiveDirectory support - present in all Windows machines. 
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2023-08-30
+    FileName    : Get-ADSIComputerByGuid.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-adms
+    Tags        : Powershell,ADSI,ActiveDirectory,Computer
+    AddedCredit : Ro Yo Mi
+    AddedWebsite:	https://serverfault.com/users/171487/ro-yo-mi
+    AddedTwitter:	URL
+    AddedCredit : François-Xavier Cat
+    AddedWebsite:	https://lazywinadmin.github.io/
+    AddedTwitter:	@lazywinadmin / https://twitter.com/lazywinadmin
+    REVISIONS
+    10:12 AM 9/26/2023 working (add to vad); CBH working now (refactored 3x) ; pulled filter on mailcontact, uncommented the mailcontact block; updated CBH & examples
+    * 11:26 AM 8/31/2023 init: validated all but -type:mailcontact works (documented msExchRecipientDisplayType is blank, on *all* xop MailContacts; can't filter that attrib at all, and get hits; default back to type:group wo the filtering for recipients)
+    * 6/19/2023 Ro Yo Mi's posted code sample
+    * 10/30/2013 lazywinadmin's original post
+    .DESCRIPTION
+    Get-ADSIObjectByGuid.ps1 - Dependency-less function to retrieve an AD object - computer|group|contact - using it's AD object guid. Uses nothing more than windows native ADSI ActiveDirectory support - present in all Windows machines. 
+    I use this so that I can specify objects in code by storing their fairly obscure guid in scripts, and then resolve the guid back to the full object details, for connectivy.
+    
+        -type mailbox filters 'OR' on the following 'mailbox' recipient variants: 
+        Usermailbox|Sharedmailbox|RoomMailbox|RemoteMailUser|EquipmentMailbox|RemoteUserMailbox|RemoteRoomMailbox|RemoteEquipmentMailbox|RemoteSharedMailbox
+    
+        (same token, if local Exchange Mgmt Shell support can store recipients using the underlying Exchange guid, and use (get-recipient xxx).primarysmtpaddress to retrive the matching object's email address for specifying Notification addreses
+        But this works with or without Exch/EXO connectivity, and has no module dependancy, as long as you locally load the code from this function)
+
+    Properties returned per object type:
+        - computer : 
+        distinguishedname,description,name,whencreated,dnshostname,displayname,objectclass,objectCategory
+
+        - group|distributiongroup :
+        distinguishedname,description,name,whencreated,mailnickname,msexchrecipientdisplaytype,
+        msexchrequireauthtosendto,mail,msexchhidefromaddresslists,objectclass,objectCategory,proxyaddresses,
+        grouptype,info,whencreated,cn,managedby,member,displayname 
+
+        - contact
+        distinguishedname,description,name,givenname,sn,memberof,targetaddress,whencreated,
+        mailnickname,mail,objectclass,objectCategory,proxyaddresses,whencreated,cn,displayname
+
+        - user|mailbox:
+        distinguishedname,description,name,whencreated,mailnickname,msexchrecipientdisplaytype,
+        msexchremoterecipienttype,mail,objectclass,objectCategory,proxyaddresses,department,
+        msexchwhenmailboxcreated,title,targetaddress,givenname,memberof,streetaddress,samaccountname,
+        userprincipalname,countrycode,showinaddressbook,physicaldeliveryofficename,employeetype,initials,
+        lastlogon,useraccountcontrol,postalcode,displayname,msexchrecipientdisplaytype,employeetype,
+        initials,lastlogon,useraccountcontrol,postalcode,displayname,msexchrecipientdisplaytype,name,
+        telephonenumber,mailnickname,employeenumber
+
+    .PARAMETER  GUID
+    Guid for AD object to be returned[-GUID 'nenncnnb-ennn-nfnc-nnnn-nnnnnnnnanne'
+    .PARAMETER LDAPserver
+    Domain to be searched[-LDAPserver 'sub.domain.com']
+    .PARAMETER GUID
+    Guid for AD object to be returned (the AD guid, not any assoicated Exchange guid)[-GUID 'nenncnnb-ennn-nfnc-nnnn-nnnnnnnnanne']
+    .PARAMETER Type
+    Type: LDAP objectCategory (or keyword for Computer|group|contact|user|mailbox|distributiongroup) for the target object[-Type 'computer']
+    .PARAMETER LDAPserver
+    Domain to be searched[-LDAPserver 'sub.domain.com'
+    .EXAMPLE
+    PS> Get-ADSIObjectByGuid -guid 'nnnnnnnn-nnnn-nnnn-nnnn-nnnnnnnnnnnn' -Type computer -LDAPserver SUB.DOM.DOMAIN.COM -verbose  ; 
+
+    distinguishedname : {CN=SERVER,OU=OU,OU=SITE,DC=SUB,DC=DOM,DC=DOMAIN,DC=com}
+    description       : {DESCRIPTIONTEXT}
+    name              : {SERVER}
+    whencreated       : {7/1/2014 3:27:24 PM}
+    dnshostname       : {SERVER.SUB.DOM.DOMAIN.COM}
+    displayname       : {SERVER$}
+    objectclass       : {top, person, organizationalPerson, user...}
+    objectCategory    : {CN=Computer,CN=Schema,CN=Configuration,DC=DOM,DC=DOMAIN,DC=COM}
+    
+    Demo resolving a guid to the full computer object.
+    .EXAMPLE
+    PS> Get-ADSIObjectByGuid -GUID 'nenncnnb-ennn-nfnc-nnnn-nnnnnnnnanne' -Type 'user' -LDAPserver 'SUB.DOMAIN.COM' -verbose ;
+    Query user object on guid
+    PS> Get-ADSIObjectByGuid -guid nccenen-n-n-bfaa-cnadnea -Type mailbox -LDAPserver global.ad.toro.com
+    Query a mail recipient
+    .EXAMPLE
+    PS> Get-ADSIObjectByGuid -guid nfbn-nden-nban-nbn-ncnedfn -Type computer -LDAPserver SUB.DOM.DOMAIN.COM -verbose  ; 
+    Query computer on guid
+    .EXAMPLE
+    PS> Get-ADSIObjectByGuid -guid nffaencd-en-nan-anfc-nfnenan -Type contact -LDAPserver SUB.DOM.DOMAIN.COM
+    Query contact on guid
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    .LINK
+    https://serverfault.com/questions/310529/search-ad-by-guid
+    .LINK
+    https://lazywinadmin.com/2013/10/powershell-get-domaincomputer-adsi.html
+    #>
+    
+    [CmdletBinding()]
+    PARAM(
+        [Parameter(Position=0,ValueFromPipeline=$true, Mandatory=$true, HelpMessage="Guid for AD object to be returned[-GUID 'nenncnnb-ennn-nfnc-nnnn-nnnnnnnnanne'[-GUID 'nenncnnb-ennn-nfnc-nnnn-nnnnnnnnanne']")]
+            [system.guid]$guid,
+        [Parameter(Position=1, Mandatory=$true, HelpMessage="Type: LDAP objectCategory (or keyword for Computer|group|contact|user|mailbox|distributiongroup) for the target object[-Type 'computer']")]
+            [ValidateSet('Computer','group','contact','user','mailbox','distributiongroup','mailcontact')]            
+            [String[]]$Type,
+        [Parameter(Mandatory=$true, HelpMessage="Domain to be searched[-LDAPserver 'sub.domain.com'")]
+            $LDAPserver
+    ) ;  
+    BEGIN{
+        <#
+         LDAP filter Syntax:
+         <filter>=(<attribute><operator><value>)
+         or
+         (<operator><filter1><filter2>)
+         Operators
+         = 	Equal to
+         ~= 	Approximately equal to
+         <= 	Lexicographically less than or equal to
+         >= 	Lexicographically greater than or equal to
+         & 	AND
+         | 	OR
+         ! 	NOT
+			        to NOT something, lead it with a !(NOT), and enclose the structure with paras:
+		 	        (&(mail=*)(!(objectClass=contact))) == "objects with some mail value and NOT objectClass=contact"
+         Wildcards: 
+         Get all entries: (objectClass=*)
+         Get entries containing "bob" somewhere in the common name: (cn=*bob*)
+         Get entries with a common name greater than or equal to "bob": (cn>='bob')
+         Get all users with an e-mail attribute: (&(objectClass=user)(email=*))
+         Get all entries without an e-mail attribute: (!(email=*))
+         Get all user entries with an e-mail attribute and a surname equal to "smith":
+ 	        (&(sn=smith)(objectClass=user)(email=*))
+         Get all user entries with a common name that starts with "andy","steve", or "margaret":
+         (&(objectClass=user) | (cn=andy*)(cn=steve)(cn=margaret))
+         (|(sAMAccountName=TransFloBillingMbx)(sAMAccountName=SQLservernotif))
+         AD SYNTAX NOTES ::
+         -----------------------------------------------------------
+         User Type	objectClass		
+ 				        objectCategory	sAMAccountType	
+         -----------------------------------------------------------
+         User		top; person; organizationalPerson; user	
+ 				        Person			805306368	
+ 							
+         Contact		top; person; organizationalPerson; contact
+ 				        Person			<none>
+ 											
+         inetOrgPerson top; person; organizationalPerson; user; inetOrgPerson
+ 				        Person			805306368
+ 
+         Computer	top; person; organizationalPerson; user; computer;
+ 				        Computer		805306369
+
+         DL			group
+					        group			268435457
+
+         Dynamic DL	msExchDynamicDistributionList
+					        ms-Exch-Dynamic-Distribution-List <none>
+
+         PF			publicFolder
+					        ms-Exch-Public-Folder <none>
+        #>
+        <#
+         Underlying AD object range of recipient-related values: 
+
+        [Exchange RecipientTypes | GetPS.dev](https://getps.dev/blog/exchange-recipienttypes/)
+        November 16, 2020 · 4 min read    
+        ### msExchRecipientDisplayType
+
+        |DisplayName|Name|Value|
+        |---|---|---|
+        |ACL able Mailbox User|ACLableMailboxUser|1073741824|
+        |Security Distribution Group|SecurityDistributionGroup|1043741833|
+        |Equipment Mailbox|EquipmentMailbox|8|
+        |Conference Room Mailbox|ConferenceRoomMailbox|7|
+        |Remote Mail User|RemoteMailUser|6|
+        |Private Distribution List|PrivateDistributionList|5|
+        |Organization|Organization|4|
+        |Dynamic Distribution Group|DynamicDistributionGroup|3|
+        |Public Folder|PublicFolder|2|
+        |Distribution Group|DistrbutionGroup|1|
+        |Mailbox User|MailboxUser|0|
+        |Synced Universal Security Group as Universal Security Group|SyncedUSGasUSG|-1073739511|
+        |ACL able Synced Universal Secuirty Group as Contact|ACLableSyncedUSGasContact|-1073739514|
+        |ACL able Synced Remote Mail User|ACLableSyncedRemoteMailUser|-1073740282|
+        |ACL able Synced Mailbox User|ACLableSyncedMailboxUser|-1073741818|
+        |Synced Universal Security Group as Contact|SyncedUSGasContact|-2147481338|
+        |Synced Universal Security Group as Universal Distribution Group|SyncedUSGasUDG|-2147481343|
+        |Synced Equipment Mailbox|SyncedEquipmentMailbox|-2147481594|
+        |Synced Conference Room Mailbox|SyncedConferenceRoomMailbox|-2147481850|
+        |Synced Remote Mail User|SyncedRemoteMailUser|-2147482106|
+        |Synced Dynamic Distribution Group|SyncedDynamicDistributionGroup|-2147482874|
+        |Synced Public Folder|SyncedPublicFolder|-2147483130|
+        |Synced Universal Distribution Group as Contact|SyncedUDGasContact|-2147483386|
+        |Synced Universal Distribution Group as Universal Distribution Group|SyncedUDGasUDG|-2147483391|
+        |Synced Mailbox User|SyncedMailboxUser|-2147483642|
+
+
+        ### msExchRecipientTypeDetails
+        |DisplayName|Name|Value|
+        |---|---|---|
+        |Team Mailbox|TeamMailbox|137438953472|
+        |Remote Shared Mailbox|RemoteSharedMailbox|34359738368|
+        |Remote Equipment Mailbox|RemoteEquipmentMailbox|17179869184|
+        |Remote Equipment Mailbox (IncorrectValue)|RemoteEquipmentMailbox|17173869184|
+        |Remote Room Mailbox|RemoteRoomMailbox|8589934592|
+        |Remote User Mailboxï¿½ï¿½ï¿½ï¿½ï¿½|RemoteUserMailbox|2147483648|
+        |Role Group|RoleGroup|1073741824|
+        |Discovery Mailbox|DiscoveryMailbox|536870912|
+        |Room List|RoomList|268435456|
+        |Linked User|LinkedUser|33554432|
+        |Mailbox Plan|MailboxPlan|16777216|
+        |Arbitration Mailbox|ArbitrationMailbox|8388608|
+        |Microsoft Exchange|MicrosoftExchange|4194304|
+        |Disabled User|DisabledUser|2097152|
+        |Non-Universal Group|NonUniversalGroup|1048576|
+        |Universal Security Group|UniversalSecurityGroup|524288|
+        |Universal Distribution Group|UniversalDistributionGroup|262144|
+        |Contact|Contact|131072|
+        |User|User|65536|
+        |Cross-Forest Mail Contact|MailForestContact|32768|
+        |System Mailbox|SystemMailbox|16384|
+        |System Attendant Mailbox|SystemAttendantMailbox|8192|
+        |Public Folder|Public Folder|4096|
+        |Dynamic Distribution Group|DynamicDistributionGroup|2048|
+        |Mail-Enabled Universal Security Group|MailUniversalSecurityGroup|1024|
+        |Mail-Enabled Non-Universal Distribution Group|MailNonUniversalGroup|512|
+        |Mail-Enabled Universal Distribution Group|MailUniversalDistributionGroup|256|
+        |Mail User|MailUser|128|
+        |Mail Contact|MailContact|64|
+        |Equipment Mailbox|EquipmentMailbox|32|
+        |Room Mailbox|RoomMailbox|16|
+        |Legacy Mailbox|LegacyMailbox|8|
+        |Shared Mailbox|SharedMailbox|4|
+        |Linked Mailbox|LinkedMailbox|2|
+        |User Mailbox|UserMailbox|1|
+
+        ### msExchRecipientTypeDetails 
+        |1|UserMailbox|
+        |---|---|
+        |2|LinkedMailbox|
+        |4|SharedMailbox|
+        |16|RoomMailbox|
+        |32|EquipmentMailbox|
+        |128|MailUser|
+        |2147483648|RemoteUserMailbox|
+        |8589934592|RemoteRoomMailbox|
+        |17179869184|RemoteEquipmentMailbox|
+        |34359738368|RemoteSharedMailbox|
+        #>  
+        switch ($type){
+            'computer'{
+                write-verbose "Type:computer specified" ; 
+                # "(&(objectCategory=$($type))(DistinguishedName=$($DistinguishedName)))"
+                $filterType = "(objectCategory=computer)" ; 
+                $prps= 'distinguishedname','description','name','whencreated','dnshostname','displayname','objectclass','objectCategory' | select -unique ; ; 
+            }
+            'group'{
+                write-verbose "Type:group specified" ; 
+                $filterType = "(objectCategory=group)" ; 
+                $prps= 'distinguishedname','description','name','whencreated','mailnickname','msexchrecipientdisplaytype',
+                    'msexchrequireauthtosendto','mail','msexchhidefromaddresslists','objectclass','objectCategory','proxyaddresses',
+                    'grouptype','info','whencreated','cn','managedby','member','displayname' | select -unique ; ;
+            }
+            'distributiongroup'{
+                write-verbose "Type:distributiongroup specified (mail-enabled variant of group)" ; 
+                <# DL MailUniversalDistributionGroup have msExchRecipientDisplayType : 1
+                Security Distribution Group	SecurityDistributionGroup	1043741833
+                #>
+                #$filterType = "(objectCategory=group)" ; 
+                $filterType = "(objectCategory=group)(|(msExchRecipientDisplayType=1)(msExchRecipientDisplayType=1043741833))"
+                $prps= 'distinguishedname','description','name','whencreated','mailnickname','msexchrecipientdisplaytype',
+                    'msexchrequireauthtosendto','mail','msexchhidefromaddresslists','objectclass','objectCategory','proxyaddresses',
+                    'grouptype','info','whencreated','cn','managedby','member','displayname' | select -unique ; ;
+            }
+            'contact'{
+                write-verbose "Type:contact specified" ;
+                $filterType = "(objectCategory=contact)" 
+                $prps= 'distinguishedname','description','name','givenname','sn','memberof','targetaddress','whencreated',
+                    'mailnickname','mail','objectclass','objectCategory','proxyaddresses','whencreated','cn','displayname' | select -unique ; ;
+                # missing: ,'msexchrecipientdisplaytype','msexchhidefromaddresslists''managedby',
+            }
+            # 2:14 PM 8/31/2023 disable: none of the 'MailContacts' have a functional msExchRecipientDisplayType set. Still unsure how to differentiate a Mailcontact from an AD.Contact, disable this block, until we have a better fiter
+            # 9:19 AM 9/26/2023 actually, it still returns the proper target obj, wo the msExchRecipientDisplayType filter: objectCategory=contact & guid are sufficient to isolate the single object
+            'mailcontact'{
+                write-verbose "Type:contact specified (mailcontact-specific *not* supported at this point, no working msExchRecipientDisplayType value to target)" ;
+                # MailContacts: msExchRecipientDisplayType            : 6
+                #$filterType = "(objectCategory=contact)" 
+                #$filterType = "(&(objectCategory=contact)(msExchRecipientDisplayType=6))" ; # Mailcontacts have blank msExchRecipientDisplayType, drop the filter
+                $filterType = "(&(objectCategory=contact))" ; 
+                # msExchRecipientDisplayType=6 consistently fails to match, go to populated
+                $filterType = "(&(objectCategory=contact)(msExchRecipientDisplayType=*))" ; 
+                # even * fails -> none of the 'MailContacts' have a functional msExchRecipientDisplayType set. Still unsure how to differentiate a Mailcontact from an AD.Contact, disable this block, until we have a better fiter
+                $prps= 'distinguishedname','description','name','givenname','sn','memberof','targetaddress','whencreated',
+                    'mailnickname','mail','objectclass','objectCategory','proxyaddresses','whencreated','cn','displayname' | select -unique ; ;
+                # missing: ,'msexchrecipientdisplaytype','msexchhidefromaddresslists''managedby',
+            }
+            #
+            'user'{
+                write-verbose "Type:user specified" ; 
+                <# - objectClass=user is slower/unindexed and returns computer objects
+                   - objectCategory=Person is a faster indexed field than the unindexed objectClass, 
+                	    but returns user, inetOrgPerson & contacts
+                   - just want to find user and inetOrgPerson objects and not have contacts and/or computers returned?
+                    use: (&(objectClass=user)(objectCategory=Person))
+                #>
+                # "(&(objectCategory=$($type))(DistinguishedName=$($DistinguishedName)))"
+                $filterType = "&(objectClass=user)(objectCategory=Person)" ;
+                $prps= 'distinguishedname','description','name','whencreated','mailnickname','msexchrecipientdisplaytype',
+                    'msexchremoterecipienttype','mail','objectclass','objectCategory','proxyaddresses','department',
+                    'msexchwhenmailboxcreated','title','targetaddress','givenname','memberof','streetaddress','samaccountname',
+                    'userprincipalname','countrycode','showinaddressbook','physicaldeliveryofficename','employeetype','initials',
+                    'lastlogon','useraccountcontrol','postalcode','displayname','msexchrecipientdisplaytype','employeetype',
+                    'initials','lastlogon','useraccountcontrol','postalcode','displayname','msexchrecipientdisplaytype','name',
+                    'telephonenumber','mailnickname','employeenumber' | select -unique ; 
+            } ; 
+            'mailbox'{
+                write-verbose "Type:mailbox specified (mail-enabled variant of user)" ; 
+                <# 
+                AD - Spot *real* Exchange-managed objects (vs ADDistributionGroups, ADContacts, ADUsers w mail populated):
+                Dl's have msExchRecipientDisplayType : 1
+                OnPrem user mbxs: msExchRecipientDisplayType : 1073741824
+                Remotemailboxes: msExchRecipientDisplayType : -2147483642
+                   Note: they no longer have homemdb
+                MailContacts: msExchRecipientDisplayType            : 6
+                All Exchange-maintained objects have msExchRecipientDisplayType set. AD-objects 'faking' it won't. 
+                (&(objectClass=user)(mail=*)(!(extensionAttribute2=*)))
+                # or
+                (|(msExchRecipientDisplayType=1073741824)(msExchRecipientDisplayType=-2147483642))
+
+                # dump types: 
+                get-recipient -filter {recipienttypedetails -eq 'UserMailbox'} -ResultSize 1 | select -expand samaccountname | %{get-aduser -id $_ -prop * | fl msExchRecipientDisplayType}
+
+                Usermailbox  has msExchRecipientDisplayType  1073741824
+                Sharedmailbox " 0
+                RoomMailbox 7 
+                RemoteMailUser 6
+                EquipmentMailbox 8
+                RemoteUserMailbox " -2147483642
+                RemoteRoomMailbox has msExchRecipientDisplayType -2147481850
+                RemoteEquipmentMailbox "  -2147481594
+                RemoteSharedMailbox " -2147483642
+
+                #>
+                #$filterType = "&(objectClass=user)(objectCategory=Person)" ;
+                # (&(objectClass=user)(mail=*))
+                #$filterType = "&(objectClass=user)(mail=*)(|(msExchRecipientDisplayType=1073741824)(msExchRecipientDisplayType=-2147483642))"
+                # add other variant msExchRecipientDisplayType's to the list
+                $filterType = "&(objectClass=user)(mail=*)(|(msExchRecipientDisplayType=1073741824)(msExchRecipientDisplayType=0)(msExchRecipientDisplayType=6)(msExchRecipientDisplayType=7)(msExchRecipientDisplayType=8)(msExchRecipientDisplayType=-2147483642)(msExchRecipientDisplayType=-2147481850)(msExchRecipientDisplayType=-2147481594))"
+                $prps= 'distinguishedname','description','name','whencreated','mailnickname','msexchrecipientdisplaytype',
+                    'msexchremoterecipienttype','mail','objectclass','objectCategory','proxyaddresses','department',
+                    'msexchwhenmailboxcreated','title','targetaddress','givenname','memberof','streetaddress','samaccountname',
+                    'userprincipalname','countrycode','showinaddressbook','physicaldeliveryofficename','employeetype','initials',
+                    'lastlogon','useraccountcontrol','postalcode','displayname','msexchrecipientdisplaytype','employeetype',
+                    'initials','lastlogon','useraccountcontrol','postalcode','displayname','msexchrecipientdisplaytype','name',
+                    'telephonenumber','mailnickname','employeenumber' | select -unique ; 
+            }
+        } ;
+    } ;     
+    PROCESS{
+        <# Old LDAP/LDP/dsquery filtering notes:
+        try to hybrid mbxs & dl's: ((class=user OR group) AND mail non-null) returned 11k items...
+        set FILTER="(&(|(objectClass=user)(objectClass=group))(mail=*))"
+        - mail-enabled users: (&(objectClass=user)(mail=*)) 
+        -  this one returns all mail-enabled groups (dl's)
+            set FILTER="(&(mail=*)(objectClass=group))"
+        -  filter on displayname
+            "(&(displayName=LASTNAME, FNAME))"
+            (&(mail= Todd.Kadrie@Rbcdain.com))
+            Primarysmtpaddress in the string
+            (&(proxyAddresses=SMTP:*user@mydomain.com*))
+        - LDAP - DL ManagedBy Search
+            (managedBy=distinguishedNameOfPerson)
+        - * If you wanted a list of Computers, showing their location, operatingSystem, operatingSystemVersion, and operatingSystemServicePack, use:
+            dsquery * domainroot -filter "(&(objectCategory=Computer)(objectClass=User))" -attr distinguishedName location operatingSystem operatingSystemVersion operatingSystemServicePack -limit 0
+        - set FIELDS="DN, displayName, info, mail, mailNickname, managedBy, name, proxyAddresses, sAMAccountName, sAMAccounttype, showInAddressbook, msExchRequireAuthToSendTo, description"
+            "DN, displayName, sAMAccountName, proxyAddresses"
+            "DN, employeeID, givenName, initials, sn, proxyAddresses, sAMAccountName"
+            "DN, employeeID, givenName, initials, sn, proxyAddresses, sAMAccountName, employeeID, objectClass"
+             for dl's or groups:
+            "DN, displayName, info, mail, mailNickname, managedBy, name, proxyAddresses, sAMAccountName, sAMAccounttype, showInAddressbook, msExchRequireAuthToSendTo, description"
+            "DN, employeeID, givenName, initials, sn, proxyAddresses, sAMAccountName, physicalDeliveryOfficeName, employeeID, telephoneNumber, title, homeMTA, msExchHomeServerName, description"
+
+        -  query filter on 3 attributes:
+             (&(&(objectClass=user)(objectClass=top))(objectClass=person))
+             For 4 attributes, this would be:
+             (&(&(&(objectClass=top)(objectClass=person))(objectClass=organizationalPerson))(objectClass=user))
+        -  objectClass=user is slower/unindexed and returns computer objects
+             objectCategory=Person is a faster indexed field than the unindexed objectClass, 
+            		but returns user, inetOrgPerson & contacts
+             just want to find user and inetOrgPerson objects and not have contacts and/or computers returned?
+             use: (&(objectClass=user)(objectCategory=Person))
+             or qry against the sAMAccounttype directly (same effect, also indexed, and very specific):
+             		(sAMAccountType=805306368)
+
+             only objects of inetOrgPerson class you can use the following filter.
+            	(&(objectClass=inetOrgPerson)(objectCategory=Person))
+
+             user objects without returning inetOrgPersons you need to specifically exclude inetOrgPerson
+            	(&(sAMAccountType=805306368)(!(objectClass=inetOrgPerson)))
+
+             in general searches that use the logical NOT operator (such as the one above) should be avoided 
+            	unless there is no alternative.  This is because it can cause the query processor to return objects to 
+            	which you do not have access or specific attributes that do not have a value.
+
+             For more efficient searches start at the lowest point in the AD hierarchy that will give you the 
+            	result you are looking for
+        #>
+
+        FOREACH ($item in $GUID){
+            $GetItem  = "GUID=$($item)" ;
+            write-verbose "LDAP://$($LDAPserver)/<$($GetItem)>..." ; 
+            TRY{$DistinguishedName = $([ADSI]"LDAP://$($LDAPserver)/<$($GetItem)>").DistinguishedName} CATCH {$_ | fl * -Force; continue} ;
+            if($DistinguishedName){
+                TRY{
+                    $Searcher = [ADSISearcher] ([ADSI] "LDAP://$($LDAPserver)") ;
+                    #(&(objectCategory=$($type))(DistinguishedName=$($DistinguishedName)))
+                    $fltr = "(&($($filterType))(DistinguishedName=$($DistinguishedName)))"
+                    $Searcher.Filter = $fltr ; 
+                    write-verbose "`$Searcher.Filter:`n$($Searcher.Filter)" ; 
+                    FOREACH ($object in $($Searcher.FindAll())){
+                        if($host.version.major -ge 3){$hsh = [ordered]@{'dummy' = $null} } 
+                        else { $hsh = @{'dummy' = $null} ; } ; 
+                        if($hsh.Contains('dummy')){$hsh.remove('dummy')} ; 
+                        write-verbose "cycling & adding `$prps" ; 
+                        $prps |foreach-object{
+                            $hsh.add($_,$object.properties[$_]) 
+                        } ; 
+                        write-verbose "returning PSObject to pipeline" ; 
+                        New-Object -TypeName PSObject -Property $hsh | write-output ;
+                    } ; 
+                } CATCH {$_ | fl * -Force; continue} 
+            } else {throw "$($GetItem) failed to return a matching DistinguishedName" }; 
+        } ; 
+    } ; 
+}
+
+#*------^ Get-ADSIObjectByGuid.ps1 ^------
+
+
 #*------v get-ADSiteLocal.ps1 v------
 function get-ADSiteLocal {
     <#
@@ -669,6 +1268,200 @@ function get-ADSiteLocal {
 #*------^ get-ADSiteLocal.ps1 ^------
 
 
+#*------v get-ADUserDetailsTDO.ps1 v------
+Function get-ADUserDetailsTDO {
+        <#
+        .SYNOPSIS
+        get-ADUserDetailsTDO - Uses ADSI LDAP to retrieve AD User information  (wo need for full ActiveDirectory powershell module)
+        .NOTES
+        Version     : 2.0.5
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 2015-09-03
+        FileName    : get-ADUserDetailsTDO.ps1
+        License     : (none-asserted)
+        Copyright   : (none-asserted)
+        Github      : https://github.com/tostka/verb-adms
+        Tags        : Powershell, ActiveDirectory, User, Accounts, Security.Principal. SecurityIdentifier
+        AddedCredit : Ed Wilson
+        AddedWebsite: https://devblogs.microsoft.com/scripting/use-powershell-to-translate-a-users-sid-to-an-active-directory-account-name/
+        AddedTwitter: URL
+        REVISIONS
+        * 2:42 PM 5/29/2024 pulled -samaccountname default to $env:username, and shifted it to an example (keep from resolving, when -SID is specified); added explicit w-o's (rplc'd shell closing Exits); extended CBH); removed extraneous output formatting new-underling()
+            ren'd UserToSid-SidToUser.ps1 -> get-ADUserDetailsTDO; ren'd Get-UserToSid() -> _resolve-ADSamAccountNameToSID, Get-SidToUser() -> _resolve-ADSidToSamAccountName()
+        #10/12/2010 - posted version
+        .DESCRIPTION
+        get-ADUserDetailsTDO - Uses ADSI LDAP to retrieve AD User information  (wo need for full ActiveDirectory powershell module)
+
+        Extension of samples from on old ScriptingGuy post from 2010.
+        I've extended the basic SamAccountName <-> SID queries demo'd to include ADUser equiv lookup & return, and UPN & SamAccName return. 
+
+        .PARAMETER Domain
+        AD Domain hosting the target user [-Domain MyDom]
+        .PARAMETER SamAccountName
+        AD SamAccountName for the target user [-SamAccountName LnameFI]
+        .PARAMETER SID
+        AD Account SID value for target user [-SID S-n-n-nn-nnnnnnnnnn-nnnnnnnnn-nnnnnnnnnn-nnnnn]
+        .PARAMETER returnADUser
+        Switch to return the resolved user's ADUser properties [-returnADUser]
+        .PARAMETER returnUPN
+        Switch to return the resolved user's UserPrincipalName [-returnUPN]
+        .PARAMETER returnSamAccountName
+        Switch to return the resolved user's SamAccountName [-returnSamAccountName]
+        .INPUTS
+        [string]
+        .OUTPUTS
+        [string] UPN or SamAccountname
+        [pscustomobject] AD User properties         
+        .EXAMPLE
+        PS> $ADUser = get-ADUserDetailsTDO  -samaccountname “mytestuser”
+        Resolves the user samaccountname to the matching AD User details
+        .EXAMPLE
+        PS> $ADUser = get-ADUserDetailsTDO  -samaccountname $env:USERNAME
+        Resolves the username environment variable as samaccountname to the matching AD User details
+        .EXAMPLE
+        PS> $ADUser = get-ADUserDetailsTDO  -sid “S-1-5-21-1877799863-120120469-1066862428-500”
+        Resolves the user SID to the matching AD User details
+        .EXAMPLE
+        PS> $UPN = get-ADUserDetailsTDO  -samaccountname “mytestuser” -returnUPN
+        Resolves the user samaccountname to the matching AD User UserPrincipalName, assigns return to a variable
+        .EXAMPLE
+        PS> $SamaccountName = get-ADUserDetailsTDO  -samaccountname “mytestuser” -returnSamAccountName
+        Resolves the user samaccountname to the matching AD User returnSamAccountName, assigns return to a variable
+        .LINK
+        https://devblogs.microsoft.com/scripting/use-powershell-to-translate-a-users-sid-to-an-active-directory-account-name/
+        .LINK
+        https://github.com/tostka/verb-ADMS
+        #>
+        [CmdletBinding()]
+        #[Alias('Get-ExchangeServerInSite')]
+        PARAM(
+            [Parameter(HelpMessage="AD Domain hosting the target user [-Domain MyDom]")]
+                [string]$domain = $env:USERDOMAIN, 
+            [Parameter(Position=0,ValueFromPipeline=$true,HelpMessage="AD SamAccountName for the target user [-samaccountname LnameFI]")]
+                [Alias('user')]
+                [string]$SamAccountName, 
+            [Parameter(HelpMessage="AD Account SID value for target user [-SID S-n-n-nn-nnnnnnnnnn-nnnnnnnnn-nnnnnnnnnn-nnnnn]")]
+                [string]$sid,
+            [Parameter(HelpMessage="Switch to return the resolved user's ADUser properties [-returnADUser]")]
+                [switch]$returnADUser,
+            [Parameter(HelpMessage="Switch to return the resolved user's UserPrincipalName [-returnUPN]")]
+                [switch]$returnUPN,
+            [Parameter(HelpMessage="Switch to return the resolved user's SamAccountName [-returnSamAccountName]")]
+                [switch]$returnSamAccountName
+        ) ; 
+        BEGIN{
+            ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+            $Verbose = ($VerbosePreference -eq 'Continue') ;
+            $rPSBoundParameters = $PSBoundParameters ; 
+            $PSParameters = New-Object -TypeName PSObject -Property $rPSBoundParameters ;
+            write-verbose "`$rPSBoundParameters:`n$(($rPSBoundParameters|out-string).trim())" ;
+            #region BANNER ; #*------v BANNER v------
+            $sBnr="#*======v $(${CmdletName}): $($SamAccountName,$sid) v======" ;
+            $smsg = $sBnr ;
+            write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" ; 
+            #endregion BANNER ; #*------^ END BANNER ^------
+        } ;  # BEG-E
+        PROCESS{
+            TRY{
+                if(-not $SID -and $SamAccountName){
+                    $smsg = "Translate SamAccountname $($SamAccountname) to SID" ; 
+                    write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)"
+                    $ntAccount = new-object System.Security.Principal.NTAccount($domain, $SamAccountName) ; 
+                    $sid = $ntAccount.Translate([System.Security.Principal.SecurityIdentifier]) ; 
+                } ; 
+                write-host "Resolve SID to ADUser information (slow [adsi]LDAP:// query...)";
+                $account = [adsi]"LDAP://<SID=$($sid)>" ;
+                if( $returnUPN){
+                    $account.Properties["UserPrincipalName"] | Write-Output
+                }elseif($returnSamAccountName){
+                    $account.Properties["SamAccountName"] | Write-Output
+                }elseif($returnADUser -OR -not ($returnUPN -OR $returnSamAccountName)){
+                    $adout = $($account | select-object *) ; 
+                    <# empty object/no-matches return: Test .guid populated 
+                    AuthenticationType :
+                    Children           :
+                    Guid               :
+                    ObjectSecurity     :
+                    Name               :
+                    NativeGuid         :
+                    NativeObject       :
+                    Parent             :
+                    Password           :
+                    Path               :
+                    Properties         :
+                    SchemaClassName    :
+                    SchemaEntry        :
+                    UsePropertyCache   :
+                    Username           :
+                    Options            :
+                    Site               :
+                    Container          : 
+                    #>
+                    if($null -eq $adout.Guid ){
+                        
+                        $smsg = "No matching AD Object returned for:`n$(($PSParameters|out-string).trim())" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    } else {
+                        $smsg = "return resolved ADUser properties to pipeline" ; 
+                        write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+                        $adout | write-output ;                     
+                    } ; 
+                };
+            } CATCH [System.Management.Automation.MethodInvocationException]{
+                $ErrTrapd=$Error[0] ;
+                switch -Regex ($ErrTrapd.exception){
+                    'Some\sor\sall\sidentity\sreferences\scould\snot\sbe\stranslated\.'{
+                        $smsg = "Unable to resolve -SamAccountName '$($SamAccountName)' to an SID" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        break ; 
+                    } 
+                    default {
+                        $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    }
+                } ; 
+            } CATCH {
+                #$ErrTrapd=$Error[0] ;
+                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #
+                <# full trap
+                $ErrTrapd=$Error[0] ;
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $smsg = $ErrTrapd.Exception.Message ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #-=-record a STATUSWARN=-=-=-=-=-=-=
+                $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+                if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+                if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+                #-=-=-=-=-=-=-=-=
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                #>
+            } ; 
+            
+        } ;  # PROC-E
+        END{
+            $smsg = "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        } ; 
+    }
+
+#*------^ get-ADUserDetailsTDO.ps1 ^------
+
+
 #*------v get-ADUserViaUPN.ps1 v------
 function get-ADUserViaUPN {
     <#
@@ -686,6 +1479,7 @@ function get-ADUserViaUPN {
     Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell, ActiveDirectory, UserPrincipalName
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     * 10:57 AM 2/3/2022 init
     .DESCRIPTION
     get-ADUserViaUPN - get-ADUser wrapper that implements proper -EA STOP error return when using -filter {UPN -eq 'someupn@domain'}. 
@@ -858,7 +1652,7 @@ function get-ADUserViaUPN {
     #>
     #Requires -Version 3
     #Requires -Modules verb-AAD, ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]
@@ -997,6 +1791,326 @@ function get-ADUserViaUPN {
 #*------^ get-ADUserViaUPN.ps1 ^------
 
 
+#*------v Get-ComputerADSiteName.ps1 v------
+function Get-ComputerADSiteName{
+    <#
+    .SYNOPSIS
+    Get-ComputerADSiteName - Return Active Directory site name for a remote Windows computer name (leverages the OS nltest command)
+    .NOTES
+    Version     : 0.1.2
+    Author      : Shay Levy
+    Website     : https://powershellmagazine.com/2013/04/23/pstip-get-the-ad-site-name-of-a-computer/
+    Twitter     : @ShayLevy
+    CreatedDate : 2024-03-13
+    FileName    : Get-ComputerADSiteName.ps1
+    License     : (nond asserted)
+    Copyright   : (nond asserted)
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,Site,Computer
+    AddedCredit : Todd Kadrie
+    AddedWebsite: http://www.toddomation.comgci 
+    AddedTwitter: @tostka / http://twitter.com/tostka
+    REVISIONS
+    * 9:22 AM 3/13/2024 1.1.1 updated: add CBH, expand error handling, validate nltest is avail, tagged outputs w explicit w-o
+    * 11/12/23 v1.1 - PowershellMagazine.com posted article 
+    .DESCRIPTION
+    Get-ComputerADSiteName - Return Active Directory site name for a remote Windows computer name (leverages the OS nltest command)
+
+    Minor tweaking - add CBH, expand error handling, validate nltest is avail -  to Shay Levy's simple function for obtaining remote computer AD SiteName by leveraging the nltest cmdline util
+
+    [#PSTip Get the AD site name of a computer](https://powershellmagazine.com/2013/04/23/pstip-get-the-ad-site-name-of-a-computer/)
+
+    Stripped down portable/pastable copy (no CBH, e.g. Shay Levy's stripped down exmple w minor upgrades from this func; still pasteable into other scripts wo tweaking)
+
+        ```Powershell
+        function Get-ComputerADSiteName{
+            [CmdletBinding()]
+            Param(
+                [Parameter(Position = 0, ValueFromPipeline = $true,HelpMessage="Computername for site lookup")]
+                    [string]$ComputerName = $Env:COMPUTERNAME        
+            ) ; 
+            BEGIN { TRY{get-command nltest -ea STOP | out-null}CATCH{write-warning "missing dependnant nltest util!" ; break }} ;
+            PROCESS {
+                write-verbose $ComputerName ;
+	            $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
+	            if($LASTEXITCODE -eq 0){$site[0].trim() | write-output } else {write-warning "Unable to run  nltest /server:$($ComputerName) /dsgetsite successfully" } ; 
+            } ; 
+        } ; 
+
+        ```
+       
+    .PARAMETER  Computername
+    Computername for site lookup
+    Defaults to %COMPUTERNAME%
+    .INPUTS
+    Accepts piped input.
+    .OUTPUTS
+    String AD SiteName
+    .EXAMPLE
+    PS>Get-ComputerADSiteName -ComputerName PC123456789
+        
+        EULON01
+
+    Demo resolution of computername to sitename
+    .EXAMPLE
+    'Server1','Server2' | Get-ComputerADSiteName -verbose
+
+        VERBOSE: Server1
+        Site1
+        VERBOSE: Server2
+        Site2
+
+    Demo resolution of array of computernames through pipeline, with verbose output
+    .LINK
+    https://powershellmagazine.com/2013/04/23/pstip-get-the-ad-site-name-of-a-computer/
+    .LINK
+    https://gist.github.com/gbdixg/5cd6ea0c984278b08b36260ada0e3f9c
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding()]
+    Param(
+        [Parameter(Position = 0, ValueFromPipeline = $true,HelpMessage="Computername for site lookup")]
+            [string]$ComputerName = $Env:COMPUTERNAME        
+    ) ; 
+    BEGIN { TRY{get-command nltest -ea STOP | out-null}CATCH{write-warning "missing dependnant nltest util!" ; break }} ;
+    PROCESS {
+        write-verbose $ComputerName ;
+	    $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
+	    if($LASTEXITCODE -eq 0){$site[0].trim() | write-output } else {write-warning "Unable to run  nltest /server:$($ComputerName) /dsgetsite successfully" } ; 
+    } ; 
+}
+
+#*------^ Get-ComputerADSiteName.ps1 ^------
+
+
+#*------v Get-ComputerADSiteSummary.ps1 v------
+Function Get-ComputerADSiteSummary {
+    <#
+    .SYNOPSIS
+    Get-ComputerADSiteSummary - Used to get the Active Directory subnet and the site it is assigned to for a remote Windows computer/IP address
+    .NOTES
+    Version     : 1.1.1
+    Author      : gbdixg/GD
+    Website     : write-verbose.com
+    Twitter     : @writeverbose / http://twitter.com/writeverbose
+    CreatedDate : 2024-03-13
+    FileName    : Get-ComputerADSiteSummary.ps1
+    License     : MIT License
+    Copyright   : (c) 2024 Todd Kadrie
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory,Site,Computer
+    AddedCredit : Todd Kadrie
+    AddedWebsite: http://www.toddomation.com
+    AddedTwitter: @tostka / http://twitter.com/tostka
+    REVISIONS
+    * 12:24 PM 3/13/2024 ren:Find-ADSite -> Get-ComputerADSiteSummary  1.1.1 updated CBH; tagged outputs w explicit w-o 
+    * 11/12/23 v1.1 - current posted GitHub Gist version
+    .DESCRIPTION
+    Get-ComputerADSiteSummary - Used to get the Active Directory subnet and the site it is assigned to for a Windows computer/IP address
+     Requires only standard user read access to AD and can determine the ADSite for a local or remote computer
+
+     Shay Levy also demo's a much simplified variant for obtaining remote computer AD SiteName by leveraging the nltest cmdline util:
+
+    function Get-ComputerADSite($ComputerName){
+	    $site = nltest /server:$ComputerName /dsgetsite 2>$null ; 
+	    if($LASTEXITCODE -eq 0){ $site[0] } ; 
+    }
+
+    .PARAMETER  IPAddress
+    Specifies the IP Address for the subnet/site lookup in as a .NET System.Net.IPAddress
+    When this parameter is used, the computername is not specified.
+    .PARAMETER  Computername
+    Specifies a computername for the subnet/site lookup.
+    The computername is resolved to an IP address before performing the subnet query.
+    Defaults to %COMPUTERNAME%
+    When this parameter is used, the IPAddress and IP are not specified.
+    .PARAMETER  DC
+    A specific domain controller in the current users domain for the subnet query
+    If not specified, standard DC locator methods are used.
+    .PARAMETER  AllMatches
+    A switch parameter that causes the subnet query to return all matching subnets in AD
+    This is not normally used as the default behaviour (only the most specific match is returned) is usually prefered.
+    This switch will include "catch-all" subnets that may be defined to accomodate missing subnets
+    .PARAMETER showDebug
+    Debugging Flag [-showDebug]
+    .PARAMETER whatIf
+    Whatif Flag  [-whatIf]
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    System.Object summary of IPAddress, Subnet and AD SiteName
+    .EXAMPLE
+    PS>Get-ComputerADSiteSummary -ComputerName PC123456789
+
+        ComputerName      : PC123456789
+        IPAddress         : 162.26.192.151
+        ADSubnetName      : 162.26.192.128/25
+        ADSubnetDesc      : 3rd Floor Main Road Office
+        ADSiteName        : EULON01
+        ADSiteDescription : London
+    Demo's resolving computername to Site details
+    .EXAMPLE
+    PS>$SiteSummary = get-computeradsitesummary -IPAddress 192.168.5.15
+    Demos resolving IP address to AD Site summary, and assigning return to a variable.
+    .LINK
+    https://write-verbose.com/2019/04/13/Get-ComputerADSiteSummary/
+    .LINK
+    https://gist.github.com/gbdixg/5cd6ea0c984278b08b36260ada0e3f9c
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding(DefaultParameterSetName = "byHost")]
+    Param(
+        [Parameter(Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $True, ParameterSetName = "byHost")]
+            [string]$ComputerName = $Env:COMPUTERNAME,
+        [Parameter(Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $True, Mandatory = $True, ParameterSetName = "byIPAddress")]
+            [System.Net.IPAddress]$IPAddress,
+        [Parameter(Position = 1)]
+            [string]$DC,
+        [Parameter()]
+            [switch]$AllMatches
+    )
+    PROCESS {
+        switch ($pscmdlet.ParameterSetName) {
+            "byHost" {
+                TRY {
+                    $Resolved = [system.net.dns]::GetHostByName($Computername)
+                    [System.Net.IPAddress]$IP = ($Resolved.AddressList)[0] -as [System.Net.IPAddress]
+                }CATCH{
+                    Write-Warning "$ComputerName :: Unable to resolve name to an IP Address"
+                    $IP = $Null
+                }
+            }
+            "byIPAddress" {
+                TRY {
+                    $Resolved = [system.net.dns]::GetHostByAddress($IPAddress)
+                    $ComputerName = $Resolved.HostName
+                } CATCH {
+                    # Write-Warning "$IP :: Could not be resolved to a hostname"
+                    $ComputerName = "Unable to resolve"
+                }
+                $IP = $IPAddress
+            }
+
+        }#switch
+    
+        if($PSBoundParameters.ContainsKey("DC")){
+            $DC+="/"
+        }
+
+        if ($IP) {
+            # The following maths loops over all the possible subnet mask lengths
+            # The masks are converted into the number of Bits to allow conversion to CIDR format
+            # The script tries to lookup every possible range/subnet bits combination and keeps going until it finds a hit in AD
+
+            [psobject[]]$MatchedSubnets = @()
+
+            For ($bit = 30 ; $bit -ge 1; $bit--) {
+                [int]$octet = [math]::Truncate(($bit - 1 ) / 8)
+                $net = [byte[]]@()
+
+                for ($o = 0; $o -le 3; $o++) {
+                    $ba = $ip.GetAddressBytes()
+                    if ($o -lt $Octet) {
+                        $Net += $ba[$o]
+                    } ELSEIF ($o -eq $octet) {
+                        $factor = 8 + $Octet * 8 - $bit
+                        $Divider = [math]::pow(2, $factor)
+                        $value = $divider * [math]::Truncate($ba[$o] / $divider)
+                        $Net += $value
+                    } ELSE {
+                        $Net += 0
+                    }
+                } #Next
+
+                #Format network in CIDR notation
+                $Network = [string]::join('.', $net) + "/$bit"
+
+                # Try to find this Network in AD Subnets list
+                Write-Verbose "Trying : $Network"
+                TRY{
+                    $de = New-Object System.DirectoryServices.DirectoryEntry("LDAP://" + $DC + "rootDSE")
+                    $Root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$DC$($de.configurationNamingContext)")
+                    $ds = New-Object System.Directoryservices.DirectorySearcher($root)
+                    $ds.filter = "(CN=$Network)"
+                    $Result = $ds.findone()
+                }CATCH{
+                    $Result = $null
+                }
+
+                if ($Result) {
+                    write-verbose "AD Site found for $IP"
+
+                    # Try to split out AD Site from LDAP path
+                    $SiteDN = $Result.GetDirectoryEntry().siteObject
+                    $SiteDe = New-Object -TypeName System.DirectoryServices.DirectoryEntry("LDAP://$SiteDN")
+                    $ADSite = $SiteDe.Name[0]
+                    $ADSiteDescription = $SiteDe.Description[0]
+
+                    $MatchedSubnets += [PSCustomObject][Ordered]@{
+                        ComputerName = $ComputerName
+                        IPAddress    = $IP.ToString()
+                        ADSubnetName = $($Result.properties.name).ToString()
+                        ADSubnetDesc = "$($Result.properties.description)"
+                        ADSiteName       = $ADSite
+                        ADSiteDescription = $ADSiteDescription
+                    }
+                    $bFound = $true
+                }#endif
+            }#next
+
+        }#endif
+        if ($bFound) {
+
+            if ($AllMatches) {
+                # output all the matched subnets
+                $MatchedSubnets | write-output ;
+            } else {
+
+                # Only output the subnet with the largest mask bits
+                [Int32]$MaskBits = 0 # initial value
+
+                Foreach ($MatchedSubnet in $MatchedSubnets) {
+
+                    if ($MatchedSubnet.ADSubnetName -match "\/(?<Bits>\d+)$") {
+                        [Int32]$ThisMaskBits = $Matches['Bits']
+                        Write-Verbose "ThisMaskBits = '$ThisMaskBits'"
+
+                        if ($ThisMaskBits -gt $MaskBits) {
+                            # This is a more specific subnet
+                            $OutputSubnet = $MatchedSubnet
+                            $MaskBits = $ThisMaskBits
+
+                        } else {
+                            Write-Verbose "No match"
+                        }
+                    } else {
+                        Write-Verbose "No match"
+                    }
+                }
+                $OutputSubnet | write-output ;
+            }#endif
+        } else {
+
+            Write-Verbose "AD Subnet not found for $IP"
+            if ($IP -eq $null) {$IP = ""} # required to prevent exception on ToString() below
+
+            New-Object -TypeName PSObject -Property @{
+                ComputerName = $ComputerName
+                IPAddress    = $IP.ToString()
+                ADSubnetName = "Not found"
+                ADSubnetDesc = ""
+                ADSiteName   = ""
+                ADSiteDescription = ""
+            } | write-output  ; 
+        }#end if
+    }#process
+}
+
+#*------^ Get-ComputerADSiteSummary.ps1 ^------
+
+
 #*------v get-DCLocal.ps1 v------
 Function get-DCLocal {
     <#
@@ -1076,6 +2190,7 @@ function get-GCFast {
     Additional Credits: Originated in Ben Lye's GetLocalDC()
     Website:	http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     REVISIONS   :
+    * 3:38 PM 3/7/2024 SPB Site:Spellbrook no longer has *any* GCs: coded in a workaround and discvoer domain-wide filtering for CN=EDC.* gcs (as spb servers use EDCMS8100 AS LOGONDC)
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
     # 2:19 PM 4/29/2019 add [lab dom] to the domain param validateset & site lookup code, also copied into tsksid-incl-ServerCore.ps1
     # 2:39 PM 8/9/2017 ADDED some code to support labdom.com, also added test that $LocalDcs actually returned anything!
@@ -1106,6 +2221,7 @@ function get-GCFast {
     [string]$Site
   ) ;
   $SpeedThreshold = 100 ;
+  $rgxSpbDCRgx = 'CN=EDCMS'
   $ErrorActionPreference = 'SilentlyContinue' ; # Set so we don't see errors for the connectivity test
   $env:ADPS_LoadDefaultDrive = 0 ; $sName = "ActiveDirectory"; if ( !(Get-Module | Where-Object { $_.Name -eq $sName }) ) {
     if ($bDebug) { Write-Debug "Adding ActiveDirectory Module (`$script:ADPSS)" };
@@ -1125,7 +2241,21 @@ function get-GCFast {
   # gc filter
   #$LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) } ;
   #$LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) } ;
-  $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) -and (Domain -eq $Domain) } ;
+  # ISSUE: ==3:26 pm 3/7/2024: NO LOCAL SITE DC'S IN SPB
+  # os: LOGONSERVER=\\EDCMS8100
+  if( $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) -and (Domain -eq $Domain) }){
+  
+  } elseif($Site -eq 'Spellbrook'){
+        $smsg = "Get-ADDomainController -filter { (isglobalcatalog -eq `$true) -and (Site -eq $($Site)) -and (Domain -eq $($Domain)}"
+        $smsg += "`nFAILED to return DCs, and `$Site -eq Spellbrook:" 
+        $smsg += "`ndiverting to $($rgxSpbDCRgx) dcs in entire Domain:" ; 
+        write-warning $smsg ;
+        $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Domain -eq $Domain) } | 
+            ?{$_.ComputerObjectDN -match $rgxSpbDCRgx } 
+  } ; 
+  
+  
+  
   # any dc filter
   #$LocalDCs = Get-ADDomainController -filter {(Site -eq $Site)} ;
 
@@ -1988,6 +3118,7 @@ function load-ADMS {
     Website:	http://toddomation.com
     Twitter:	http://twitter.com/tostka
     REVISIONS   :
+    * 12:57 PM 8/22/2023 test before calling Add-PSTitleBar (for PRY/dep-less support)
     * 9:18 AM 7/26/2021 added add-PSTitleBar ADMS tag, w verbose supp; moved connect-ad alias into function alias spec
     * 2:10 PM 6/9/2021 add verbose support 
     * 9:57 AM 11/26/2019 added $Cmdlet param, and ADPS_LoadDefaultDrive suppression evari, to speed up or permit selective loads of targeted cmdlests, stipped down the 'load every module' code to just target the single mod
@@ -2038,7 +3169,9 @@ function load-ADMS {
         if (!($ModsLoad)) {
             $env:ADPS_LoadDefaultDrive = 0 ;
             import-module @pltAD;
-            Add-PSTitleBar 'ADMS' -verbose:$($VerbosePreference -eq "Continue") ;
+            if(get-command Add-PSTitleBar -ea 0){
+                Add-PSTitleBar 'ADMS' -verbose:$($VerbosePreference -eq "Continue") ;
+            } ; 
             return $TRUE;
         } else {
             return $TRUE;
@@ -2072,6 +3205,7 @@ function mount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection
     * 1:08 PM 1/31/2022 trimmed requires, dropping rem'd entries
     # 3:34 PM 6/9/2021 rev'd all echos to write-verbose only (silent op)
     # 12:24 PM 3/19/2021 added -NoTOL to suppress inaccessible TOL forest (until network opens up the blocked ports) ;  flipped userroles to array SID,ESVC,LSVC, trying to get it to *always* pull working acct (failing in CMW)
@@ -2140,7 +3274,7 @@ cfgRoot" -Properties cn,dnsRoot,nCName,trustParent,nETBIOSName).dnsroot
     #>
     #Requires -Version 3
     #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage = "Switch to limit test to local 'TOR' forest [-TorOnly]")]
@@ -2438,8 +3572,29 @@ function resolve-ADRightsGuid {
 
 #*------v Sync-AD.ps1 v------
 Function Sync-AD { 
-    # let's you trigger a replication between DCs. This function needs further tweaks for re-usability
-    # from dsoldow's https://github.com/dsolodow/IndyPoSH/blob/master/Profile.ps1
+    <#
+    .SYNOPSIS
+    Triggers a replication between Domain Controllers (DCs).
+    .NOTES
+    Version: 1.0.0
+    Author: [Your Name]
+    CreatedDate: [Creation Date]
+    FileName: Sync-AD.ps1
+    Source: Adapted from dsoldow's script at https://github.com/dsolodow/IndyPoSH/blob/master/Profile.ps1
+    .DESCRIPTION
+    The `Sync-AD` function allows you to trigger a replication between specified Domain Controllers (DCs). This function can be customized further for reusability. It uses the `repadmin` tool to perform the replication.
+    .PARAMETER DestinationDC
+    The destination Domain Controller for the replication. Defaults to 'centralDC'.
+    .PARAMETER SourceDC
+    The source Domain Controller for the replication. Defaults to 'localDC'.
+    .PARAMETER DirectoryPartition
+    The directory partition to replicate. Defaults to 'YourDomainName'.
+    .EXAMPLE
+    PS C:\> Sync-AD -DestinationDC 'centralDC' -SourceDC 'localDC' -DirectoryPartition 'YourDomainName'
+    This command triggers a replication from 'localDC' to 'centralDC' for the specified directory partition.
+    .LINK
+    https://github.com/dsolodow/IndyPoSH/blob/master/Profile.ps1
+    #>
     [CmdletBinding()]
     Param (
     [parameter(Mandatory = $false,Position=0)] [String]$DestinationDC = 'centralDC',
@@ -2473,6 +3628,7 @@ function test-AADUserSync {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     * 12:16 PM 2/3/2022 requires block was triggering nesting error, so stripped back from abso minimum
     * 3:37 PM 1/28/2022 fixed error, due to un-instantiated $rpt (needed to be an explicit array, forgot to declare at top). 
     * 3:00 PM 1/26/2022 init
@@ -2533,7 +3689,7 @@ function test-AADUserSync {
     #>
     #Requires -Version 3
     #Requires -Modules MSOnline, verb-AAD, ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
 
@@ -3053,6 +4209,7 @@ function unmount-ADForestDrives {
     AddedWebsite: https://social.technet.microsoft.com/Forums/en-US/a36ae19f-ab38-4e5c-9192-7feef103d05f/how-to-query-user-across-multiple-forest-with-ad-powershell?forum=ITCG
     AddedTwitter:
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection
     # 7:24 AM 10/23/2020 init 
     .DESCRIPTION
     unmount-ADForestDrives() - Unmount PSDrive objects mounted for cross-domain ADMS work (ADMS relies on set-location 'PsDrive' to shift context to specific forest). If $global:ADPsDriveNames variable exists, it will remove solely those drives. Otherwise removes all -PSProvider ActiveDirectory drives *not* named 'AD' (the default ADMS module drive, created on import of that module)
@@ -3089,7 +4246,7 @@ function unmount-ADForestDrives {
     #>
     #Requires -Version 3
     #Requires -Modules ActiveDirectory
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     [CmdletBinding()]
     PARAM(
         [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
@@ -3125,25 +4282,27 @@ function unmount-ADForestDrives {
 
 
 #*------v Validate-Password.ps1 v------
-Function Validate-Password{
+Function test-Password{
     <#
     .SYNOPSIS
-    Validate-Password - Validate Password complexity, to Base AD Complexity standards
+    test-Password - Validate Password complexity, to Base AD Complexity standards
     .NOTES
     Version     : 1.0.2
     Author      : Shay Levy & commondollars
     Website     :	http://scriptolog.blogspot.com/2008/01/validating-password-strength.html
     Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 2020-04-03
-    FileName    : Function Validate-Password.ps1
+    FileName    : test-Password.ps1
     License     : (none specified)
     Copyright   : (c) 2020 Todd Kadrie
     Github      : https://github.com/tostka
     Tags        : Powershell,ActiveDirectory
     REVISIONS
+    * 10:20 AM 9/26/2023 ren & alias orig, for verb compliance: Validate-Password -> test-password
+    * 2:02 PM 8/2/2023 w revised req's: reset minLen to 14; added param & test for testComplexity (defaults false)
     * 11:43 AM 4/6/2016 hybrid of Shay Levy's 2008 post, and CommonDollars's 2013 code
     .DESCRIPTION
-    Validate-Password - Validate Password complexity, to Base AD Complexity standards
+    test-Password - Validate Password complexity, to Base AD Complexity standards
     Win2008's 2008's stnd: Passwords must contain characters from 3 of the following 4 cats:
     * English uppercase characters (A through Z).
     * English lowercase characters (a through z).
@@ -3154,35 +4313,45 @@ Function Validate-Password{
     Password to be tested
     .PARAMETER  minLength
     Minimum permissible Password Length
+    .PARAMETER TestComplexity
+    Switch to test Get-ADDefaultDomainPasswordPolicy ComplexityEnabled specs (Defaults false: requires a mix of Uppercase, Lowercase, Digits and Nonalphanumeric characters)[-TestComplexity]
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
     Outputs $true/$false to pipeline
     .EXAMPLE
     [Reflection.Assembly]::LoadWithPartialName("System.Web")|out-null ;
-    Do { $password = $([System.Web.Security.Membership]::GeneratePassword(8,2)) } Until (Validate-Password -pwd $password ) ;
+    Do { $password = $([System.Web.Security.Membership]::GeneratePassword(8,2)) } Until (test-Password -pwd $password ) ;
     Pull and validate passwords in a Loop until an AD Complexity-compliant password is returned.
     .EXAMPLE
-    if (Validate-Password -pwd "password" -minLength 10
+    if (test-Password -pwd "password" -minLength 10
     Above validates pw: Contains at least 10 characters, 2 upper case characters (default), 2 lower case characters (default), 3 numbers, and at least 3 special characters
     .LINK
     http://scriptolog.blogspot.com/2008/01/validating-password-strength.html
     #>
     [CmdletBinding()]
+    [Alias('Validate-Password')]
     PARAM(
         [Parameter(Mandatory=$True,HelpMessage="Password to be tested[-Pwd 'string']")]
         [ValidateNotNullOrEmpty()]
         [string]$pwd,
-        [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 8)[-minLen 10]")]
-        [int]$minLen=8
+        [Parameter(HelpMessage="Minimum permissible Password Length (defaults to 14)[-minLen 10]")]
+        [int]$minLen=14,
+        [Parameter(HelpMessage="Switch to test Get-ADDefaultDomainPasswordPolicy ComplexityEnabled specs (Defaults false: requires a mix of Uppercase, Lowercase, Digits and Nonalphanumeric characters)[-TestComplexity]")]
+        [switch]$TestComplexity=$false
     ) ;
     $IsGood=0 ;
     if($pwd.length -lt $minLen) {write-output $false; return} ;
-    if(([regex]"[A-Z]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
-    if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
-    If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
+    if($TestComplexity){
+        if(([regex]"[A-Z]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[a-z]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[0-9]").Matches($pwd).Count) {$isGood++ ;} ;
+        if(([regex]"[^a-zA-Z0-9]" ).Matches($pwd).Count) {$isGood++ ;} ;
+        If ($isGood -ge 3){ write-output $true ;  } else { write-output $false} ;
+    } else { 
+        write-verbose "complexity test skipped" ; 
+        write-output $true ;
+    } ; 
 }
 
 #*------^ Validate-Password.ps1 ^------
@@ -3190,7 +4359,7 @@ Function Validate-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,get-ADSiteLocal,get-ADUserViaUPN,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,Validate-Password -Alias *
+Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserDetailsTDO,get-ADUserViaUPN,Get-ComputerADSiteName,Get-ComputerADSiteSummary,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,test-Password -Alias *
 
 
 
@@ -3198,8 +4367,8 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUrG0I5KUTKCTPjYOIXHP8Cj96
-# ojmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6FGAiZ+fau4MeghRNzK91gKg
+# I26gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3214,9 +4383,9 @@ Export-ModuleMember -Function find-SiteRoleOU,get-ADForestDrives,Get-AdminInitia
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQn/lnC
-# ce9C4OzGiLGJHWSQ77ByPjANBgkqhkiG9w0BAQEFAASBgET5HfWpPs0MIYrKoYSM
-# 5ZlYOJG1K/qGB8c3wkEc06rJmaAqR54hAWz7fuhCLYLSNJI2NvKXlO/R8XKU06VV
-# c4w4rWh7ZdjUOmnZtSwbLgvJfjLcd/Wcc+1ly5MsVM8OTJN7mJbI3Y38ADbFJQ3w
-# 29NtIfdEKaQg7IzLLTbq7Rpj
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRZflFV
+# bM1VGZ0qZT10AEenu+kDpzANBgkqhkiG9w0BAQEFAASBgHa6QriPtCXXjveGHljr
+# iz8xMoHdYl2sxsv0nPgTGb9qID0rSHQBmVLB9z4+zmE98ZNPkB+2ccQwz9C3HPbt
+# 6Y9iomkLEWaHjRTzlzM7BpDRjQTpPccXdcHNWA5e/6U2lvK0hos7tpYLMXtsrDZi
+# ekcRK696pzpFHyUOqwk+3Jsh
 # SIG # End signature block
