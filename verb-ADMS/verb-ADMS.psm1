@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 4.2.0.0
+  Version     : 4.3.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -895,7 +895,7 @@ Function Get-ADSIObjectByGuid {
         |Synced Universal Security Group as Universal Distribution Group|SyncedUSGasUDG|-2147481343|
         |Synced Equipment Mailbox|SyncedEquipmentMailbox|-2147481594|
         |Synced Conference Room Mailbox|SyncedConferenceRoomMailbox|-2147481850|
-        |Synced Remote Mail User|SyncedRemoteMailUser|-2147482106|
+        |Synced Remote Mail User|SyncedRemoteMailUser|-21474.3.06|
         |Synced Dynamic Distribution Group|SyncedDynamicDistributionGroup|-2147482874|
         |Synced Public Folder|SyncedPublicFolder|-2147483130|
         |Synced Universal Distribution Group as Contact|SyncedUDGasContact|-2147483386|
@@ -4505,8 +4505,8 @@ Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU3tm1KlO3b6kcOG6viHPnmzVj
-# TdOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU30WCYjMhLbYftMME6l+RJ/ks
+# 9LagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4521,9 +4521,9 @@ Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQh9I5H
-# 3yvWqZUmYpASzbIFxi/LmjANBgkqhkiG9w0BAQEFAASBgE/y7trIaZHrv/qOe6o0
-# B8GhXXxPKk4d1jedzD5ih9qFJIj0oy00EVI9gdl8XxtnYGBaIYFQHYiJa23Dg3rM
-# NQNVOECOmtcVpkZ1kUxmCdnoA41y8T/9pXH3rPh2aTvt8RIc4JsrAgmckccBCn1v
-# T9U03bjHGnhxnufejL6gtYqs
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTBIpRo
+# /now6vqrnEi0sSfbNe4rHjANBgkqhkiG9w0BAQEFAASBgEC7+97I3H11TIE6cOH/
+# 5buL9Ieo0FODk6ZVCWsOav1loPdv7rB765K/cWtoYdoZq3XdNzJlMzi5Mza3XNKR
+# s7jd4NIHEcnJR4fU2785DtOgtphmPOzT9Xrvb6CLOswaeSAQAmTiW42njU08SZkj
+# 1IibMkbUlBBFr/HKleulOiRT
 # SIG # End signature block
