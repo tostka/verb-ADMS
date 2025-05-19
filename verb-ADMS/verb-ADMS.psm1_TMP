@@ -5,7 +5,7 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 4.3.0.0
+  Version     : 5.0.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -895,7 +895,7 @@ Function Get-ADSIObjectByGuid {
         |Synced Universal Security Group as Universal Distribution Group|SyncedUSGasUDG|-2147481343|
         |Synced Equipment Mailbox|SyncedEquipmentMailbox|-2147481594|
         |Synced Conference Room Mailbox|SyncedConferenceRoomMailbox|-2147481850|
-        |Synced Remote Mail User|SyncedRemoteMailUser|-21474.3.06|
+        |Synced Remote Mail User|SyncedRemoteMailUser|-2147482106|
         |Synced Dynamic Distribution Group|SyncedDynamicDistributionGroup|-2147482874|
         |Synced Public Folder|SyncedPublicFolder|-2147483130|
         |Synced Universal Distribution Group as Contact|SyncedUDGasContact|-2147483386|
