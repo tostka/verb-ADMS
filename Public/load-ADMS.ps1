@@ -1,7 +1,5 @@
-﻿# load-ADMS.ps1
-
-#region load_ADMS  ; #*------v load-ADMS v------
-#if(-not(gi function:load-ADMS -ea 0)){
+﻿#*------v load-ADMS.ps1 v------
+function load-ADMS {
     <#
     .SYNOPSIS
     load-ADMS - Checks local machine for registred AD MS, and loads if not loaded
@@ -10,7 +8,6 @@
     Website:	http://toddomation.com
     Twitter:	http://twitter.com/tostka
     REVISIONS   :
-    * 4:08 PM 5/14/2025 added alias import-adms
     * 12:57 PM 8/22/2023 test before calling Add-PSTitleBar (for PRY/dep-less support)
     * 9:18 AM 7/26/2021 added add-PSTitleBar ADMS tag, w verbose supp; moved connect-ad alias into function alias spec
     * 2:10 PM 6/9/2021 add verbose support 
@@ -29,24 +26,24 @@
     .OUTPUTS
     Outputs $True/False load-status
     .EXAMPLE
-    PS> $ADMTLoaded = load-ADMS ; Write-Debug "`$ADMTLoaded: $ADMTLoaded" ;
+    $ADMTLoaded = load-ADMS ; Write-Debug "`$ADMTLoaded: $ADMTLoaded" ;
     .EXAMPLE
-    PS> $ADMTLoaded = load-ADMS -Cmdlet get-aduser,get-adcomputer ; Write-Debug "`$ADMTLoaded: $ADMTLoaded" ;
+    $ADMTLoaded = load-ADMS -Cmdlet get-aduser,get-adcomputer ; Write-Debug "`$ADMTLoaded: $ADMTLoaded" ;
     Load solely the specified cmdlets from ADMS
     .EXAMPLE
     # load ADMS
-    PS> $reqMods+="load-ADMS".split(";") ;
-    PS> if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
-    PS> write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):(loading ADMS...)" ;
-    PS> load-ADMS | out-null ;
+    $reqMods+="load-ADMS".split(";") ;
+    if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
+    write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):(loading ADMS...)" ;
+    load-ADMS | out-null ;
     #load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ;
     Demo a load from the verb-ADMS.ps1 module, with opt specific -Cmdlet set
     .EXAMPLE
-    PS> if(connect-ad){write-host 'connected'}else {write-warning 'unable to connect'}  ;
+    if(connect-ad){write-host 'connected'}else {write-warning 'unable to connect'}  ;
     Variant capturing & testing returned (returns true|false), using the alias name (if don't cap|eat return, you'll get a 'True' in console
     #>
     [CmdletBinding()]
-    [Alias('connect-AD','import-adms')]
+    [Alias('connect-AD')]
     PARAM(
         [Parameter(HelpMessage="Specifies an array of cmdlets that this cmdlet imports from the module into the current session. Wildcard characters are permitted[-Cmdlet get-aduser]")]
         [ValidateNotNullOrEmpty()]$Cmdlet
@@ -73,5 +70,5 @@
         Write-Error {"$((get-date).ToString('HH:mm:ss')):($env:computername) does not have AD Mgmt Tools installed!";};
         return $FALSE
     } # if-E ;
-#} ; 
-#endregion load_ADMS ; #*----------^END Function load-ADMS ^---------- 
+} ;
+#*----------^END Function load-ADMS ^----------
