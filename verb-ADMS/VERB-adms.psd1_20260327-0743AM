@@ -69,7 +69,7 @@ Description = 'ActiveDirectory PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Convert-ADSIDomainFqdnToNBName','find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','Get-ADSIComputerByGuid','Get-ADSIObjectByGuid','get-ADSiteLocal','get-ADUserDetailsTDO','get-ADUserViaUPN','Get-ComputerADSiteName','Get-ComputerADSiteSummary','get-CredentialsTDO','get-DCLocal','Get-ForestRootNCTDO','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','Get-RootNCTDO','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','test-AADUserSync','test-ADComputerName','test-ADUserEmployeeNumber','test-CredentialsTDO','test-isADComputerName','unmount-ADForestDrives','test-Password')
+FunctionsToExport = @('Convert-ADSIDomainFqdnToNBName','find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','Get-ADSIComputerByGuid','Get-ADSIObjectByGuid','get-ADSiteLocal','get-ADUserDetailsTDO','get-ADUserViaUPN','Get-ComputerADSiteName','Get-ComputerADSiteSummary','get-DCLocal','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','test-AADUserSync','test-ADUserEmployeeNumber','unmount-ADForestDrives','test-Password')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -148,4 +148,3 @@ PrivateData = @{
 # RQfqujC2AOr+vonPO79ndJFiu6O6H0/FrLs+nbfSrBETvl399DHtwQoxuP4R1JSx
 # 6gAYxgjXURerLQ1mW9nFxqu5
 # SIG # End signature block
-

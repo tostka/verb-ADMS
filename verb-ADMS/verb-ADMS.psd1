@@ -12,7 +12,7 @@
 RootModule = 'verb-ADMS.psm1'
 
 # Version number of this module.
-ModuleVersion = '5.0.0'
+ModuleVersion = '6.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'ActiveDirectory PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Convert-ADSIDomainFqdnToNBName','find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','Get-ADSIComputerByGuid','Get-ADSIObjectByGuid','get-ADSiteLocal','get-ADUserDetailsTDO','get-ADUserViaUPN','Get-ComputerADSiteName','Get-ComputerADSiteSummary','get-DCLocal','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','test-AADUserSync','test-ADUserEmployeeNumber','unmount-ADForestDrives','test-Password')
+FunctionsToExport = @('Convert-ADSIDomainFqdnToNBName','find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','Get-ADSIComputerByGuid','Get-ADSIObjectByGuid','get-ADSiteLocal','get-ADUserDetailsTDO','get-ADUserViaUPN','Get-ComputerADSiteName','Get-ComputerADSiteSummary','get-CredentialsTDO','get-DCLocal','Get-ForestRootNCTDO','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','Get-RootNCTDO','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','test-AADUserSync','test-ADComputerName','test-ADUserEmployeeNumber','test-CredentialsTDO','test-isADComputerName','unmount-ADForestDrives','test-Password')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUoG4oUv5THLa6qHRZQpnmE+Xf
-# 1KCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUeMLvnY8yRg2Q6Sx7dgJm3FK/
+# ffugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSOJtwS
-# SBxFO/PLRBNrbF2QNrVYaDANBgkqhkiG9w0BAQEFAASBgGfEHGorGaQYrOurPDJh
-# U84h4DlZmuGxPSsPA/dFgmI7401ILkLYz5OPf/SToSihjqxaJ/Q/XdlLkqKHMW6T
-# RQfqujC2AOr+vonPO79ndJFiu6O6H0/FrLs+nbfSrBETvl399DHtwQoxuP4R1JSx
-# 6gAYxgjXURerLQ1mW9nFxqu5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRMnhl8
+# t6PmHeScj33Y9LR+tlYiTjANBgkqhkiG9w0BAQEFAASBgH7D9nRQCPRAdiNN824O
+# OE/YPkMutoUGKqMsDA9qySG6P2TAH/YnAc0t/wAoleensc4Ptsm5Qx3dtT/XWasN
+# RkYTzbZ7sddJy/l5x/G9dveP3IjH2dOFqeKrDZZ8esRvN7HWvSBROx/OAbjED/oA
+# H4mgUaHTweVGkwegB4s0/4zU
 # SIG # End signature block
