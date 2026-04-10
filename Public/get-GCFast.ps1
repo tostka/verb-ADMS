@@ -19,6 +19,7 @@ function get-GCFast {
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     AddedTwitter: URL
     REVISIONS   :
+    * 2:53 PM 4/10/2026 add: -silent
     * 2:39 PM 1/23/2025 added -exclude (exclude array of dcs by name), -ServerPrefix (exclude on leading prefix of name) params, added expanded try/catch, swapped out w-h etc for wlt calls
     * 3:38 PM 3/7/2024 SPB Site:Spellbrook no longer has *any* GCs: coded in a workaround and discvoer domain-wide filtering for CN=EDC.* gcs (as spb servers use EDCMS8100 AS LOGONDC)
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
@@ -39,6 +40,8 @@ function get-GCFast {
     Prefix string to filter for, in returns (e.g. 'ABC' would only return DCs with name starting 'ABC')
     .PARAMETER SpeedThreshold
     Threshold in ms, for AD Server response time(defaults to 100ms)
+    .PARAMETER Silent
+    Suppress echoes
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
@@ -114,7 +117,9 @@ function get-GCFast {
         [Parameter(HelpMessage = "Prefix string to filter for, in returns (e.g. 'ABC' would only return DCs with name starting 'ABC')")]
             [string]$ServerPrefix,
         [Parameter(HelpMessage = 'Threshold in ms, for AD Server response time(defaults to 100ms)')]
-            $SpeedThreshold = 100
+            $SpeedThreshold = 100,
+        [Parameter(HelpMessage = 'Suppress echoes')]
+            [switch]$silent
     ) ;
     $Verbose = $($PSBoundParameters['Verbose'] -eq $true)
     $SpeedThreshold = 100 ;
@@ -148,7 +153,7 @@ function get-GCFast {
         TRY{
             $Site = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
             $smsg = "Using local machine Site: $($Site)";
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
         } CATCH {
@@ -209,7 +214,7 @@ function get-GCFast {
         } ;
         if($Exclude){
             $smsg = "-Exclude specified:`n$((($exclude -join ',')|out-string).trim())" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
             foreach($excl in $Exclude){
@@ -218,7 +223,7 @@ function get-GCFast {
         } ; 
         if($ServerPrefix){
             $smsg = "-ServerPrefix specified: $($ServerPrefix)" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
             $PotentialDCs = $PotentialDCs |?{$_ -match "^$($ServerPrefix)" } ; 
