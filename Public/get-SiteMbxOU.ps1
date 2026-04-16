@@ -17,6 +17,15 @@ function get-SiteMbxOU {
     Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell,ActiveDirectory
     REVISIONS
+    * 9:31 AM 4/16/2026 add: example for resolving variant types; uses constants at 
+        top for the standardized RootOU & MigrOU names; has to use SiteCode switching 
+        to resolve oddball variants for Migration OU entities that don't comply with standards.
+        Full analyzed and broke out where all DGs, Smbxs; RmMbxs; EqMbxs & SecGrps are parented - added Examples for dumping histo grams for future analysis
+        It's as accurate as I can make it at current time - pre TON migration. Added 
+        Alias 'get-SiteRoleOU', as it now does DG/SecGrp & Contact OU resolution. Even 
+        pulls an approximate 'Users' equiv (which is frequently *above* where  It's as accurate as I can make it at current time - pre TON migration. Added 
+        Alias 'get-SiteRoleOU', as it now does DG/SecGrp & Contact OU resolution. Even 
+        pulls an approximate 'Users' equiv (which is frequently *above* where wacky admins actually stuff users - migr tree is 100% anarchy for organization
     * 3:33 PM 4/10/2026 full recode replaced get-adobject with get-adorganizationalunit, and scoping/SearchBase to avoid need to poll all OUs in org for post-filtering; much faster
         Also added -Type in addition to the back-comapt -generic -resource; added -Security as well, to use for resolving OUs for hosting Security group objects for mail access.
         Added demo/test block to run the Migrations OU's and valdiate they have existing OUs and logic works (CMW & SUB are both borked - have no users, no OUs).
@@ -84,24 +93,51 @@ function get-SiteMbxOU {
         Resources
         OU=Resources,OU=VD,OU=VPI,OU=_MIGRATIONS,$($DomainRoot)
 
+
     .PARAMETER  SiteCode
     Toro 3-letter site code
     .PARAMETER Type
-    Optional Type of OU to resolve (alternative to older explicit -Generic,-Resource,-Shared,-Security parameters[-type Resource]
-    .PARAMETER  Generic
-    Switch parameter indicating Generic mailboxes OU (defaults Non-generic/Users OU).[-Generic]
-    .PARAMETER  Resource
-    Switch parameter indicating Resource mailboxes OU (defaults Non-generic/Users OU).[-Resource]
-    .PARAMETER Security
-    Switch parameter indicating SEcurity Group OU (defaults Non-generic/Users OU).[-Security]
+    Optional Type of OU to resolve (Generic|Resource|PermissionGroup|DistributionGroup|Contact - alternative to older explicit parameters)[-type Resource]
+    .PARAMETER Generic
+    Switch parameter indicating Generic mailboxes OU (defaults Generic Email Accounts OU).[-Generic]
+    .PARAMETER Resource
+    Switch parameter indicating Resource mailboxes OU (defaults Email Resources OU).[-Resource]
+    .PARAMETER PermissionGroup
+    Switch parameter indicating PermissionGroup Group OU (defaults Email Access OU).[-PermissionGroup]
+    .PARAMETER DistributionGroup
+    Switch parameter indicating DistributionGroup OU (defaults Distribution Groups OU).[-DistributionGroup]
+    .PARAMETER Contact
+    Switch parameter indicating Contact OU (defaults Email Contacts OU).[-Contact]
+    .PARAMETER Users
+    Switch parameter indicating Users OU (defaults Non-generic/Users OU).[-Users]
+    .PARAMETER domaincontroller
+    Optional domaincontroller (skips discovery)[-domaincontroller 'Dc1']
     .OUTPUT
     [system.string] Returns a OU DN 
     .EXAMPLE
     $OU=get-SiteMbxOU -Sitecode SITE -Generic
     Retrieve the DN OU path for the specified SITE OU's Email-related Generic Mbx sub-OU
     .EXAMPLE
-    $MAILBOXou = get-sitembxou -Sitecode AAA -modelDistinguishedName 'OU=Aaaaaa Aaaaaaa,OU=Aaaaa Aaaaa,OU=Aaaa Aaaaaaaa,OU=Aaaaaa,OU=_AAA_Aaaa_AAA_AaAaaa,OU=AAA,OU=_AAAAAAAAAA,DC=aaaaaa,DC=aa,DC=aaaa,DC=aaa' -generic:$false -resource:$true
+    $MAILBOXou = get-sitembxou -Sitecode AAA -modelDistinguishedName 'OU=Aaaaaa Aaaaaaa,OU=Aaaaa Aaaaa,OU=Aaaa Aaaaaaaa,OU=Aaaaaa,OU=_AAA_Aaaa_AAA_AaAaaa,OU=AAA,OU=_AAAAAAAAAA,DC=aaaaaa,DC=aa,DC=aaaa,DC=aaa' -type Generic ; 
     Retrieve the DN OU path for the specified SITE OU's Email-related Generic Mbx sub-OU, resolving a SiteCode and modelDistinguishedName (to differentiat variant root)
+    PS> $pltGSmbx = [ordered]@{
+    PS>     Sitecode = $SiteCode ;
+    PS> } ; 
+    PS> if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+    PS>     $pltGSmbx.add('modelDistinguishedName',$ownermbx.DistinguishedName)
+    PS> }else{
+    PS>     $pltGSmbx.add('modelDistinguishedName',$ownermbx.DistinguishedName)
+    PS> } ; 
+    PS> If($InputSplat.NonGeneric) {
+    PS>     if($pltGSmbx.keys -contains 'generic'){$pltGSmbx.remove('Generic')}
+    PS> } elseIf($Room -OR $Equipement) {
+    PS>     $pltGSmbx.add('Resource',$true) ;
+    PS> } else {
+    PS>     $pltGSmbx.add('Generic',$true ) ;
+    PS> } ;
+    PS> if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU @pltGSmbx)   ) {
+    PS> } else { Cleanup ; BREAK ;};
+    Demo mailbox OU call from verb-ex2010\new-mailboxShared
     .EXAMPLE
     PS> 'AUG','CMW','DIT','HAM','INT','RAD','SUB','VPI' | %{
     PS>     $thiscode = $_ ; 
@@ -123,12 +159,12 @@ function get-SiteMbxOU {
     PS>         'VPI'{ $mDN = "OU=VPI,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"}  
     PS>     }
     PS>     $pltGSMx = [ordered]@{Sitecode = $thisCode ;modelDistinguishedName = $mDN ; type = $null ; verbose = $true } ; 
-    PS>     foreach($type in @('Generic','Resource','Security')){
+    PS>     foreach($type in @('Generic','Resource','PermissionGroup')){
     PS>       $pltGSMx.type = $type ; 
     PS>       switch($type){
     PS>           'Generic'{$pltW = $pltWHGen}
     PS>           'Resource'{$pltW = $pltWHRes}
-    PS>           'Security'{$pltW = $pltWHSec}
+    PS>           'PermissionGroup'{$pltW = $pltWHSec}
     PS>       } ; 
     PS>       write-host @pltW "Site:$($thiscode):$((get-date).ToString('HH:mm:ss')):get-sitembxou w`n$(($pltGSMx|out-string).trim())" ;     
     PS>       write-host @pltWHResult "`n=>`n$((get-sitembxou @pltGSMx|out-string).trim())" ; 
@@ -136,28 +172,70 @@ function get-SiteMbxOU {
     PS> } ; 
     PS> 
     Test code to check function across range of Migrations OUs & site codes (for presence of target OUs)
+    .EXAMPLE
+    PS> get-recipient -filter {recipienttypedetails -eq 'RemoteRoomMailbox'} | ?{$_.primarysmtpaddress -like '*@ditchwitch.com' } |select dist*
+    Code to poll RemoteMailbox Names distribution for a given brand domain
+    .EXAMPLE
+    PS> get-recipient -filter {recipienttypedetails -eq 'RemoteRoomMailbox'} | select @{Name="ParentOU";Expression={ ($_.distinguishedname.tostring() -split '(?<!\\),' | select -skip 1) -join "," } } | group ParentOU |  sort name | ft -a count,name
+    Code to poll RemoteMailbox ParentOU distribution for cloud Room mailboxes
+    .EXAMPLE
+    PS> $allOUs = Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server global.ad.toro.com
+    PS> $allOUs |?{$_.DistinguishedName  -match 'OU=Resources,.*OU=\w{3},OU=_MIGRATIONS,'}  | ft -a
+    Gathers all OUOs in the domain for analysis, with post filtering target OU trees
+    .EXAMPLE
+    PS> $rootous = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "DC=global,DC=ad,DC=toro,DC=com" -SearchScope onelevel
+    PS> $SiteRootOUs = @() ; 
+    PS> $SiteRootOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "DC=global,DC=ad,DC=toro,DC=com" -SearchScope onelevel |?{$_.distinguishedname -match '^OU=\w{3},' -OR $_.distinguishedname -match '^OU=PACRIM'} ; 
+    PS> $SiteRootOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com" -SearchScope onelevel |?{$_.distinguishedname -match '^OU=\w{3},'} ; 
+    PS> $siterootous.distinguishedname ; 
+    Gather all Root OUs
+    .EXAMPLE
+    $sitecodes = @() ; $siterootous.distinguishedname | %{ $_ | ?{$_ -match 'OU=(\w{3,6})'} | out-null ; $sitecodes += $matches[1]} ;
+    Build dyn syntecodes list
+    .EXAMPLE
+    PS> $allmc = get-mailcontact -resultsize unlimited ; 
+    PS> $allmc |  select @{Name="ParentOU";Expression={($_.distinguishedname.tostring() -split '(?<!\\),' | select -skip 1) -join "," } }  | group parentOU |  sort name | ft -a count,name ; 
+    Code to sample distribution of MailContact OUs
+    .EXAMPLE
+    PS> $alladu = get-aduser -filter * -ResultSetSize $null
+    PS> $alladu |  select @{Name="ParentOU";Expression={($_.distinguishedname.tostring() -split '(?<!\\),' | select -skip 1) -join "," } }  | group parentOU |  
+    PS>     ?{$_.parentOU -notmatch 'OU=New|Disabled|Generic|Email|Resource|Kiosk|Shared|System|Test|Other|Computers'} sort name | 
+    PS>     ft -a count,name ; 
+    Code to sample distribution of ADUser OUs (filter out non-working user standards (no onboarding/disabled etc))
+    .EXAMPLE
+    PS> $alldg = get-distributiongroup -ResultSize unlimited ;
+    PS> $alldg  |  select @{Name="ParentOU";Expression={($_.distinguishedname.tostring() -split '(?<!\\),' | select -skip 1) -join "," } }   | group parentOU |  sort name | ft -a count,name ;
+    Code to sample distribution of DistributionGroup OUs
     .LINK
     https://github.com/tostka/verb-ADMS
     #>
     [CmdletBinding(DefaultParameterSetName = 'None')]
+    [Alias('get-SiteRoleOU')]
     PARAM (
         [parameter(Mandatory=$false,HelpMessage="Specify the Toro 3-letter site code upon which to Query[LYN]")]
             [string[]]$Sitecode,
         [parameter(Mandatory=$false,HelpMessage="a Model DN to use to locate the resource in the same Site tree[DN]")]
             [string[]]$modelDistinguishedName,
-        [parameter(ParameterSetName = 'Type',Mandatory=$false,HelpMessage="Optional Type of OU to resolve (alternative to older explicit -Generic,-Resource,-Shared,-Security parameters[-type Resource]")]
+        [parameter(ParameterSetName = 'Type',Mandatory=$false,HelpMessage="Optional Type of OU to resolve (alternative to older explicit parameters[-type Resource]")]
             [AllowEmptyString()][AllowNull()]
-            [ValidateSet('Generic','Resource','Security','')]
+            [ValidateSet('Generic','Resource','PermissionGroup','DistributionGroup','Contact','Users','')]
             [string]$Type,
-        [parameter(ParameterSetName = 'Generic', Mandatory=$true,HelpMessage="Switch parameter indicating Generic mailboxes OU (defaults Non-generic/Users OU).[-Generic]")]
+        [parameter(ParameterSetName = 'Generic', Mandatory=$true,HelpMessage="Switch parameter indicating Generic mailboxes OU (defaults Generic Email Accounts OU).[-Generic]")]
             [switch]$Generic,
-        [parameter(ParameterSetName = 'Resource', Mandatory=$true,HelpMessage="Switch parameter indicating Resource mailboxes OU (defaults Non-generic/Users OU).[-Resource]")]
+        [parameter(ParameterSetName = 'Resource', Mandatory=$true,HelpMessage="Switch parameter indicating Resource mailboxes OU (defaults Email Resources OU).[-Resource]")]
             [switch]$Resource,        
-        [parameter(ParameterSetName = 'Security', Mandatory=$true,HelpMessage="Switch parameter indicating SEcurity Group OU (defaults Non-generic/Users OU).[-Security]")]
-            [switch]$Security,
+        [parameter(ParameterSetName = 'PermissionGroup', Mandatory=$true,HelpMessage="Switch parameter indicating PermissionGroup Group OU (defaults Email Access OU).[-PermissionGroup]")]
+            [switch]$PermissionGroup,
+        [parameter(ParameterSetName = 'DistributionGroup', Mandatory=$true,HelpMessage="Switch parameter indicating DistributionGroup OU (defaults Distribution Groups OU).[-DistributionGroup]")]
+            [switch]$DistributionGroup,
+        [parameter(ParameterSetName = 'Contact', Mandatory=$true,HelpMessage="Switch parameter indicating Contact OU (defaults Email Contacts OU).[-Contact]")]
+            [switch]$Contact,
+        [parameter(ParameterSetName = 'Users', Mandatory=$true,HelpMessage="Switch parameter indicating Users OU (defaults Non-generic/Users OU).[-Users]")]
+            [switch]$Users,
         [Parameter(HelpMessage = "Optional domaincontroller (skips discovery)[-domaincontroller 'Dc1']")]
             [string]$domaincontroller
     ) ;  # PARAM-E    
+    #region CONSTANTS_LOCAL ; #*------v CONSTANTS_LOCAL v------
     # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
     $DomainRoot = "DC=$($domtorfqdn -replace "\.",',DC=')" ; 
     $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
@@ -169,17 +247,35 @@ function get-SiteMbxOU {
     $RootAddOUNames = @('PACRIM') ; 
     [regex]$rgxRootAddOUNames = ('(' + (($RootAddOUNames |%{[regex]::escape($_)}) -join '|') + ')') ;
     $rgxSiteOUNames = '^OU=\w{3},' ; 
+    # CONSTANTS THAT SPEC DEFAULT OUS: ROOT OU'S
+    $SharedRootOU = "OU=Generic Email Accounts"
+    $ResourceRootOU="^OU=Email Resources"
+    $PermissionGroupRootOU="OU=Email Access"
+    $DistributionGroupRootOU='^OU=Distribution Groups'
+    $ContactRootOU='^OU=Email Contacts'
+    $UsersRootOU='^OU=Users'
+    # MIGRATION ROOT SPECS
+    $SharedMigrOU = "OU=Generic Email Accounts"
+    $ResourceMigrOU="OU=Resources"
+    $PermissionGroupMigrOU="OU=Email Access"
+    $DistributionGroupMigrOU='^OU=Distribution Groups' # cmw is exempted in code
+    $ContactMigrOU='^OU=Email Contacts'
+    #$UsersMigrOU='^OU=Users' # EXEMPTIONS FOR EVERY SITE, THEY'RE COMPLETELY UNMANAGED/UNSTANDARDIZED!
 
+
+    #endregion CONSTANTS_LOCAL ; #*------^ END CONSTANTS_LOCAL ^------
     # for backward  compat preserve the explicit switches, but boil them down into a Type that's used with switch blocks
-    if(-not $type -AND ($Generic -OR $Resource -OR $Security)){
+    if(-not $type -AND ($Generic -OR $Resource -OR $PermissionGroup)){
         $Type = "" 
         if($Generic){$Type = 'Generic'}
         elseif($Resource){$Type = 'Resource'}
-        elseif($Security){$Type = 'Security'}
+        elseif($PermissionGroup){$Type = 'PermissionGroup'}
+        elseif($DistributionGroup){$Type = 'DistributionGroup'}
+        elseif($Contact){$Type = 'Contact'}
         else {$Type = 'Generic'}
     } ;
-    if(-not $type -AND -not ($Generic -OR $Resource -OR $Security)){
-        write-warning "NONE OF EITHER: -TYPE -GENERIC -RESOURCE OR -SECURITY SPECIFIED!" ; 
+    if(-not $type -AND -not ($Generic -OR $Resource -OR $PermissionGroup)){
+        write-warning "NONE OF EITHER: -TYPE -GENERIC -RESOURCE OR -PermissionGroup SPECIFIED!" ; 
         RETURN ; 
     }
     $verbose = ($VerbosePreference -eq "Continue") ; 
@@ -218,16 +314,71 @@ function get-SiteMbxOU {
     if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
         if($modelDistinguishedName -match $rgxOUMigrations){
             write-verbose "resolving FindOU on Migrations Sites" ; 
-            switch($type){
+            switch($type){                
                 'Generic' {
-                    $FindOU="OU=Generic Email Accounts" # 5:18 PM 4/9/2026 confirmed DIT
+                    #$SharedMigrOU = "OU=Generic Email Accounts" # 5:18 PM 4/9/2026 confirmed DIT
+                    $FindOU=$SharedMigrOU
                 }
                 'Resource' {
-                    $FindOU="OU=Resources"
-                }                
-                'Security' {
-                    $FindOU="OU=Email Access"
-                } 
+                    #$ResourceMigrOU="OU=Resources"
+                    $FindOU=$ResourceMigrOU
+                }
+                'PermissionGroup' {
+                    #$PermissionGroupMigrOU="OU=Email Access"
+                    $FindOU=$PermissionGroupMigrOU
+                }
+                'DistributionGroup' {                    
+                    switch ($SiteCode){
+                        'CMW'{
+                            $FindOU="OU=Distribution"
+                        }
+                        default {
+                            #$DistributionGroupMigrOU='^OU=Distribution Groups'
+                            $FindOU=$DistributionGroupMigrOU
+                        }
+                    }
+                }
+                'Contact' {
+                    #$ContactMigrOU='^OU=Email Contacts'
+                    $FindOU=$ContactMigrOU
+                }
+                'Users' {
+                    switch($siteCode){
+                        'AUG'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=User Accounts' ; 
+                        }
+                        'DIT'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=People' ; 
+                        }
+                        'HAM'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=User Accounts' ; 
+                        }
+                        'INT'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=Departments' ; 
+                        }
+                        'RAD'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^User Accounts' ; 
+                        }
+                        'VPI'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=VD' ; 
+                        }
+                        DEFAULT{
+                            $FindOU='^OU=Users' ; 
+                        }
+                    }
+                }
                 default{
                     $FindOU="OU=Generic Email Accounts"
                 } ;
@@ -240,7 +391,7 @@ function get-SiteMbxOU {
                 $FindOU="OU=Resources"
             } elseif($Shared){
                 $FindOU="OU=Generic Email Accounts"
-            } elseif($Security){
+            } elseif($PermissionGroup){
                 $FindOU="OU=Email Access,"
             } else {
                 $FindOU="OU=Generic Email Accounts"
@@ -251,16 +402,31 @@ function get-SiteMbxOU {
             write-verbose "resolving FindOU on root Sites" ; 
             switch($type){
                 'Generic' {
-                    $FindOU="OU=Generic Email Accounts"
+                    #$SharedRootOU = "OU=Generic Email Accounts"
+                    $FindOU=$SharedRootOU
                 }
                 'Resource' {
-                    $FindOU="^OU=Email Resources"
+                    #$ResourceRootOU="^OU=Email Resources"
+                    $FindOU=$ResourceRootOU
                 }                
-                'Security' {
-                    $FindOU="OU=Email Access"
+                'PermissionGroup' {
+                    #$PermissionGroupRootOU="OU=Email Access"
+                    $FindOU=$PermissionGroupRootOU
                 } 
+                 'DistributionGroup' {
+                    #$DistributionGroupRootOU='^OU=Distribution Groups' 
+                    $FindOU=$DistributionGroupRootOU
+                } 
+                'Contact' {
+                    #$ContactRootOU='^OU=Email Contacts' 
+                    $FindOU=$ContactRootOU
+                } 
+                'Users' {
+                    #$UsersRootOU='^OU=Users' 
+                    $FindOU=$UsersRootOU ; 
+                }
                 default{
-                    $FindOU="OU=Users"
+                    $FindOU=$UsersRootOU
                 } ;
             }
             <#
@@ -287,8 +453,14 @@ function get-SiteMbxOU {
             'Shared' {
                 $FindOU="OU=Generic Email Accounts"
             }
-            'Security' {
+            'PermissionGroup' {
                 $FindOU="OU=Email Access,"
+            } 
+             'DistributionGroup' {
+                    $FindOU="OU=Email Access"
+            } 
+            'Contact' {
+                $FindOU="OU=Email Access"
             } 
             default{
                 $FindOU="^OU=Users"
