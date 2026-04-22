@@ -17,6 +17,7 @@ function get-SiteMbxOU {
     Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell,ActiveDirectory
     REVISIONS
+    * 12:58 PM 4/21/2026 fixed srchBaseRoot typo: (had MIgrations OU string as part of target for non-migr tree search)
     * 9:31 AM 4/16/2026 add: example for resolving variant types; uses constants at 
         top for the standardized RootOU & MigrOU names; has to use SiteCode switching 
         to resolve oddball variants for Migration OU entities that don't comply with standards.
@@ -509,18 +510,23 @@ function get-SiteMbxOU {
                     throw $smsg ; 
                 } ; 
             }else{
+                # non-Migr, strict OU combo: 
                 #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
                 #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
                 # -SearchScope onelevel 
                 if($RootSrch = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=$($SiteCode),$($srchBaseRoot)" -server $domaincontroller){
-                    write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU).OU=$($SiteCode),OU=_MIGRATIONS,"
-                    if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).OU=$($SiteCode),OU=_MIGRATIONS," }){
+                    write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU).OU=$($SiteCode),"
+                    # 1st check for target directly below the SiteOU folder
+                    if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).OU=$($SiteCode)," }){
+                        $OuDN = $OuDN.distinguishedname.tostring() ; 
+                    }elseif($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode)," }){
+                        # then as fall back, in case it's been nested down a layer, support subtree search syntax
                         $OuDN = $OuDN.distinguishedname.tostring() ; 
                     }else{
-                        $smsg = "UNABLE TO RESOLVE TARGET: -FINDOU:$($FindOU) in scope: OU=$($SiteCode),$($srchBaseMigrations)~" ; 
+                        $smsg = "UNABLE TO RESOLVE TARGET: -FINDOU:$($FindOU) in scope: OU=$($SiteCode),$($srchBaseRoot)" ; 
                         write-warning $smsg ; 
                         throw $smsg ; 
-                    }
+                    }                
                 }else{
                     $smsg = "UNABLE TO RESOLVE TARGET -scope: OU=$($SiteCode),$($srchBaseMigrations)~" ; 
                     write-warning $smsg ; 
