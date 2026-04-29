@@ -1,11 +1,11 @@
-﻿# verb-adms.psm1
+﻿# VERB-adms.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 4.3.0.0
+  Version     : 6.1.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -895,7 +895,7 @@ Function Get-ADSIObjectByGuid {
         |Synced Universal Security Group as Universal Distribution Group|SyncedUSGasUDG|-2147481343|
         |Synced Equipment Mailbox|SyncedEquipmentMailbox|-2147481594|
         |Synced Conference Room Mailbox|SyncedConferenceRoomMailbox|-2147481850|
-        |Synced Remote Mail User|SyncedRemoteMailUser|-21474.3.06|
+        |Synced Remote Mail User|SyncedRemoteMailUser|-2147482106|
         |Synced Dynamic Distribution Group|SyncedDynamicDistributionGroup|-2147482874|
         |Synced Public Folder|SyncedPublicFolder|-2147483130|
         |Synced Universal Distribution Group as Contact|SyncedUDGasContact|-2147483386|
@@ -2111,6 +2111,95 @@ Function Get-ComputerADSiteSummary {
 #*------^ Get-ComputerADSiteSummary.ps1 ^------
 
 
+#*------v get-CredentialsTDO.ps1 v------
+function get-CredentialsTDO{
+    <#
+    .SYNOPSIS
+    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory, returns a Credential object
+    .NOTES
+    Version     : 0.0.1
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 20250711-0423PM
+    FileName    : get-CredentialsTDO.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-io
+    Tags        : Powershell,ActiveDirectory,Account,Credential
+    AddedCredit : Michel de Rooij / michel@eightwone.com
+    AddedWebsite: http://eightwone.com
+    AddedTwitter: URL        
+    REVISIONS
+    * 9:02 AM 10/17/2025 pulled pw systemstring conv: test-CredentialsTDO natively accomodatese as ss; add mising wlt for return msg
+    * 1:06 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
+    * 3:15 PM 8/8/2025 rejiggered to return a credential object, (orig updated a global vari in host script);  ren get-Credentials821 -> get-821, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
+    11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
+    .DESCRIPTION
+    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory
+                
+    .INPUTS
+    None, no piped input.
+    .OUTPUTS
+    System.Object summary of Exchange server descriptors, and service statuses.
+    .EXAMPLE ; 
+    PS> if($Credentials = get-CredentialsTDO){
+    PS>     write-host -foregroundcolor green "Obtained Credential:$($Credentials.Username) (validated against AD)" ; 
+    PS> } else {
+    PS>     write-warning "INVALID CREDENTIALS SPECIFIED!" ; 
+    PS> }; 
+    .LINK
+    https://github.org/tostka/verb-ex2010/
+    #>
+    [CmdletBinding()]
+    [alias('get-Credentials')]
+    PARAM(
+        [Parameter(HelpMessage = "UserName (defaults to current desktop user)")]
+            [Alias('AdminAccount','logon')]
+            [string]$UserName,
+        [Parameter(HelpMessage = "Account password (securestring)")]
+            [Alias('AdminPassword')]
+            [System.Security.SecureString]$Password
+    ) ;
+    If( -not( $UserName -and $Password)) {
+        TRY {
+		    $Script:Credentials= Get-Credential -UserName ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -Message 'Enter credentials to use'
+            $UserName= $Credentials.UserName
+            #$Password= ($Credentials.Password | ConvertFrom-SecureString)
+            # test-CredentialsTDO() can natively handle securestring pw
+            $Password= $Credentials.Password 
+        }CATCH {
+            $ErrTrapd=$Error[0] ;
+            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+            $smsg += 'No or improper credentials provided'
+            $smsg = "" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            throw $smsg ; 
+        }
+	}
+    $smsg = 'Checking provided credentials'
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+    If( test-CredentialsTDO -UserName:$UserName -Password:$Password) {
+        $smsg = 'Credential test-CredentialsTDO:PASS`n(returning Credential object to pipeline)'
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        [System.Management.Automation.PSCredential]$Credentials = New-Object –TypeName System.Management.Automation.PSCredential –ArgumentList $UserName, $Password
+        $Credentials | write-output ; 
+    } Else {
+        $smsg = 'Credential test-CredentialsTDO:FAIL/INVALID'
+        $smsg = "" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        $false | write-output ; 
+    }
+}
+
+#*------^ get-CredentialsTDO.ps1 ^------
+
+
 #*------v get-DCLocal.ps1 v------
 Function get-DCLocal {
     <#
@@ -2177,6 +2266,54 @@ Function get-DCLocal {
 #*------^ get-DCLocal.ps1 ^------
 
 
+#*------v Get-ForestRootNCTDO.ps1 v------
+function Get-ForestRootNCTDO{
+        <#
+        .SYNOPSIS
+        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
+        .NOTES
+        Version     : 0.0.1
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 20250917-0114PM
+        FileName    : Get-ForestRootNCTDO.ps1
+        License     : (none asserted)
+        Copyright   : (none asserted)
+        Github      : https://github.com/tostka/verb-io
+        Tags        : Powershell,ActiveDirectory,Forest,Domain
+        AddedCredit : Michel de Rooij / michel@eightwone.com
+        AddedWebsite: http://eightwone.com
+        AddedTwitter: URL        
+        REVISIONS
+        * 8:34 PM 3/26/2026 move vnet -> vad
+        * 10:42 AM 10/17/2025 updated CBH to indicate format of the DN returned.
+        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
+        .DESCRIPTION
+        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
+                
+        .INPUTS
+        None, no piped input.
+        .OUTPUTS
+        System.String local ForestRoot 
+        .EXAMPLE ; 
+        PS> $FRNC= Get-ForestRootNCTDO
+        PS> $FRNC ; 
+
+            DC=sub,DC=dom,DC=tld
+
+        .LINK
+        https://github.org/tostka/verb-Network/
+        #>
+        [CmdletBinding()]
+        [alias('Get-ForestRootNC')]
+        PARAM() ;
+        return ([ADSI]'LDAP://RootDSE').rootDomainNamingContext.toString()
+    }
+
+#*------^ Get-ForestRootNCTDO.ps1 ^------
+
+
 #*------v get-GCFast.ps1 v------
 function get-GCFast {
     <#
@@ -2198,6 +2335,7 @@ function get-GCFast {
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     AddedTwitter: URL
     REVISIONS   :
+    * 2:53 PM 4/10/2026 add: -silent
     * 2:39 PM 1/23/2025 added -exclude (exclude array of dcs by name), -ServerPrefix (exclude on leading prefix of name) params, added expanded try/catch, swapped out w-h etc for wlt calls
     * 3:38 PM 3/7/2024 SPB Site:Spellbrook no longer has *any* GCs: coded in a workaround and discvoer domain-wide filtering for CN=EDC.* gcs (as spb servers use EDCMS8100 AS LOGONDC)
     * 1:01 PM 10/23/2020 moved verb-ex2010 -> verb-adms (better aligned)
@@ -2218,6 +2356,8 @@ function get-GCFast {
     Prefix string to filter for, in returns (e.g. 'ABC' would only return DCs with name starting 'ABC')
     .PARAMETER SpeedThreshold
     Threshold in ms, for AD Server response time(defaults to 100ms)
+    .PARAMETER Silent
+    Suppress echoes
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
@@ -2293,7 +2433,9 @@ function get-GCFast {
         [Parameter(HelpMessage = "Prefix string to filter for, in returns (e.g. 'ABC' would only return DCs with name starting 'ABC')")]
             [string]$ServerPrefix,
         [Parameter(HelpMessage = 'Threshold in ms, for AD Server response time(defaults to 100ms)')]
-            $SpeedThreshold = 100
+            $SpeedThreshold = 100,
+        [Parameter(HelpMessage = 'Suppress echoes')]
+            [switch]$silent
     ) ;
     $Verbose = $($PSBoundParameters['Verbose'] -eq $true)
     $SpeedThreshold = 100 ;
@@ -2327,7 +2469,7 @@ function get-GCFast {
         TRY{
             $Site = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
             $smsg = "Using local machine Site: $($Site)";
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
         } CATCH {
@@ -2388,7 +2530,7 @@ function get-GCFast {
         } ;
         if($Exclude){
             $smsg = "-Exclude specified:`n$((($exclude -join ',')|out-string).trim())" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
             foreach($excl in $Exclude){
@@ -2397,7 +2539,7 @@ function get-GCFast {
         } ; 
         if($ServerPrefix){
             $smsg = "-ServerPrefix specified: $($ServerPrefix)" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
             $PotentialDCs = $PotentialDCs |?{$_ -match "^$($ServerPrefix)" } ; 
@@ -2961,6 +3103,54 @@ Function get-GCLocal {
 #*------^ get-GCLocal.ps1 ^------
 
 
+#*------v Get-RootNCTDO.ps1 v------
+function Get-RootNCTDO{
+        <#
+        .SYNOPSIS
+        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
+        .NOTES
+        Version     : 0.0.1
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 20250917-0114PM
+        FileName    : Get-RootNCTDO.ps1
+        License     : (none asserted)
+        Copyright   : (none asserted)
+        Github      : https://github.com/tostka/verb-io
+        Tags        : Powershell,ActiveDirectory,Forest,Domain
+        AddedCredit : Michel de Rooij / michel@eightwone.com
+        AddedWebsite: http://eightwone.com
+        AddedTwitter: URL        
+        REVISIONS
+        * 8:31 PM 3/26/2026 move from vnet to vad
+        * 11:50 AM 10/17/2025 updated CBH, incl output DN example
+        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
+        .DESCRIPTION
+        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
+                
+        .INPUTS
+        None, no piped input.
+        .OUTPUTS
+        System.String local ForestRoot 
+        .EXAMPLE ; 
+        PS> $NC= Get-RootNC
+        PS> $NC; 
+
+            DC=sub,DC=sub,DC=domain,DC=tld
+
+        .LINK
+        https://github.org/tostka/verb-Network/
+        #>
+        [CmdletBinding()]
+        [alias('Get-RootNC')]
+        PARAM() ;
+        return ([ADSI]'').distinguishedName.toString()
+    }
+
+#*------^ Get-RootNCTDO.ps1 ^------
+
+
 #*------v get-SiteMbxOU.ps1 v------
 function get-SiteMbxOU {
     <#
@@ -2975,9 +3165,24 @@ function get-SiteMbxOU {
     FileName    : 
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka
+    Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell,ActiveDirectory
     REVISIONS
+    * 12:58 PM 4/21/2026 fixed srchBaseRoot typo: (had MIgrations OU string as part of target for non-migr tree search)
+    * 9:31 AM 4/16/2026 add: example for resolving variant types; uses constants at 
+        top for the standardized RootOU & MigrOU names; has to use SiteCode switching 
+        to resolve oddball variants for Migration OU entities that don't comply with standards.
+        Full analyzed and broke out where all DGs, Smbxs; RmMbxs; EqMbxs & SecGrps are parented - added Examples for dumping histo grams for future analysis
+        It's as accurate as I can make it at current time - pre TON migration. Added 
+        Alias 'get-SiteRoleOU', as it now does DG/SecGrp & Contact OU resolution. Even 
+        pulls an approximate 'Users' equiv (which is frequently *above* where  It's as accurate as I can make it at current time - pre TON migration. Added 
+        Alias 'get-SiteRoleOU', as it now does DG/SecGrp & Contact OU resolution. Even 
+        pulls an approximate 'Users' equiv (which is frequently *above* where wacky admins actually stuff users - migr tree is 100% anarchy for organization
+    * 3:33 PM 4/10/2026 full recode replaced get-adobject with get-adorganizationalunit, and scoping/SearchBase to avoid need to poll all OUs in org for post-filtering; much faster
+        Also added -Type in addition to the back-comapt -generic -resource; added -Security as well, to use for resolving OUs for hosting Security group objects for mail access.
+        Added demo/test block to run the Migrations OU's and valdiate they have existing OUs and logic works (CMW & SUB are both borked - have no users, no OUs).
+    * 6:05 PM 4/9/2026 complete-recoding to accomodate bananas non-standard/unmanaged Migrations OU Shared/Room-Eqiu & SecGrp OU names: Went through all Migrations OU roots and created missing OUs to suit
+        added -modelDistinguishedName to even have a shot at resolving (short of running a canned list of SiteCodes, that will ahve to dyn accommodate mergers over time)
     * 10:57 AM 4/3/2020 cleanup to modularize, added verbose sup, updated CBH
     # 2:51 PM 3/6/2017 add -Resource param to steer to 'Email Resources'
     # 12:36 PM 2/27/2017 fixed to cover breaks frm AD reorg OU name changes, Generics are all now in a single OU per site
@@ -2987,48 +3192,520 @@ function get-SiteMbxOU {
     * 11:05 AM 10/7/2015 initial vers
     .DESCRIPTION
     get-SiteMbxOU() - passed a standard 3-letter site code, it returns the OU dn for that site's Email-related SecGrps (directly below Site ou)
+
+    Migrations "standards" as of poll manually run for Shared|Room\Equip & Email Access SecGrp homing:
+
+    AUG has 
+        OU=Generic Email Accounts,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=AUG,OU=_MIGRATIONS,$($DomainRoot)
+        OU=Email Access,OU=Security Groups,OU=Groups,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=AUG,OU=_MIGRATIONS,$($DomainRoot)
+        OU=Resources,OU=User Accounts,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=AUG,OU=_MIGRATIONS,$($DomainRoot)
+
+        DIT:
+        ,OU=Generic Email Accounts,OU=People,OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,$($DomainRoot)
+        OU=Email Access,OU=Security Groups,OU=People,OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,$($DomainRoot)
+        OU=Resources,OU=User Accounts,OU=People,OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,$($DomainRoot)
+
+        CMW has:
+        zippo
+
+
+        HAM:
+        OU=Email Access,OU=Security Groups,OU=Groups,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=HAM,OU=_MIGRATIONS,$($DomainRoot)
+        OU=Generic Email Accounts,OU=User Accounts,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=HAM,OU=_MIGRATIONS,$($DomainRoot)
+        OU=Resources,OU=User Accounts,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=HAM,OU=_MIGRATIONS,$($DomainRoot)
+
+        INT:
+        OU=Generic Email Accounts,OU=INT,OU=_MIGRATIONS,$($DomainRoot)
+        => ADDED rESOURCES 5:38 PM 4/9/2026
+        OU=Resources,OU=INT,OU=_MIGRATIONS,$($DomainRoot)
+        => ADDED Email Access, 5:41 PM 4/9/2026
+        Email Access,OU=Global Groups,OU=INT,OU=_MIGRATIONS,$($DomainRoot)
+
+        RAD:
+        OU=Email Access,OU=Security Groups,OU=Groups,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=RAD,OU=_MIGRATIONS,$($DomainRoot)
+        OU=Generic Email Accounts,OU=Generic Users,OU=User Accounts,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=RAD,OU=_MIGRATIONS,$($DomainRoot)
+        => Add Resources 5:45 PM 4/9/2026
+        OU=Resources,OU=User Accounts,OU=Users and Groups,OU=_TTC_Sync_CMW_NoSync,OU=RAD,OU=_MIGRATIONS,$($DomainRoot)
+
+        SUB: 
+        _TTC_Sync_CMW_NoSync tree is EMPTY
+        => THEY'RE UP IN DW!
+        OnPremisesDistinguishedName   : CN=C4C Subsite KY,OU=Contact Center,OU=SAP,OU=Special Accounts,OU=_TTC_Sync_CMW_NoSync,DC=ditchwitch,DC=cmw,DC=internal
+        SHAREDMAILBOX
+        there's no users using the domain:
+        ▒▒▒▒▒ [PS]:D:\scripts $ get-xorecipient -filter {primarysmtpaddress -like '*@subsite.com'} -RecipientType usermailbox
+
+        ▒▒▒▒▒ [PS]:D:\scripts $ get-xorecipient -filter {primarysmtpaddress -like '*@subsite.com'}
+
+        VPI:
+        OU=Generic Email Accounts,OU=VD,OU=VPI,OU=_MIGRATIONS,$($DomainRoot)
+        => added OU=Email Access 5:59 PM 4/9/2026
+        OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=VD,OU=VPI,OU=_MIGRATIONS,$($DomainRoot)
+        => Add Resources 6:01 PM 4/9/2026
+        Resources
+        OU=Resources,OU=VD,OU=VPI,OU=_MIGRATIONS,$($DomainRoot)
+
+
     .PARAMETER  SiteCode
     Toro 3-letter site code
-    .PARAMETER  Generic
-    Switch parameter indicating Generic Mbx OU (defaults Non-generic/Users OU).
-    .PARAMETER  Resource
-    Switch parameter indicating Resource Mbx OU (defaults Non-generic/Users OU).[-Resource]
+    .PARAMETER Type
+    Optional Type of OU to resolve (Generic|Resource|PermissionGroup|DistributionGroup|Contact - alternative to older explicit parameters)[-type Resource]
+    .PARAMETER Generic
+    Switch parameter indicating Generic mailboxes OU (defaults Generic Email Accounts OU).[-Generic]
+    .PARAMETER Resource
+    Switch parameter indicating Resource mailboxes OU (defaults Email Resources OU).[-Resource]
+    .PARAMETER PermissionGroup
+    Switch parameter indicating PermissionGroup Group OU (defaults Email Access OU).[-PermissionGroup]
+    .PARAMETER DistributionGroup
+    Switch parameter indicating DistributionGroup OU (defaults Distribution Groups OU).[-DistributionGroup]
+    .PARAMETER Contact
+    Switch parameter indicating Contact OU (defaults Email Contacts OU).[-Contact]
+    .PARAMETER Users
+    Switch parameter indicating Users OU (defaults Non-generic/Users OU).[-Users]
+    .PARAMETER domaincontroller
+    Optional domaincontroller (skips discovery)[-domaincontroller 'Dc1']
+    .OUTPUT
+    [system.string] Returns a OU DN 
     .EXAMPLE
-    $OU=get-SiteMbxOU -Sitecode SITE
+    $OU=get-SiteMbxOU -Sitecode SITE -Generic
     Retrieve the DN OU path for the specified SITE OU's Email-related Generic Mbx sub-OU
+    .EXAMPLE
+    $MAILBOXou = get-sitembxou -Sitecode AAA -modelDistinguishedName 'OU=Aaaaaa Aaaaaaa,OU=Aaaaa Aaaaa,OU=Aaaa Aaaaaaaa,OU=Aaaaaa,OU=_AAA_Aaaa_AAA_AaAaaa,OU=AAA,OU=_AAAAAAAAAA,DC=aaaaaa,DC=aa,DC=aaaa,DC=aaa' -type Generic ; 
+    Retrieve the DN OU path for the specified SITE OU's Email-related Generic Mbx sub-OU, resolving a SiteCode and modelDistinguishedName (to differentiat variant root)
+    PS> $pltGSmbx = [ordered]@{
+    PS>     Sitecode = $SiteCode ;
+    PS> } ; 
+    PS> if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+    PS>     $pltGSmbx.add('modelDistinguishedName',$ownermbx.DistinguishedName)
+    PS> }else{
+    PS>     $pltGSmbx.add('modelDistinguishedName',$ownermbx.DistinguishedName)
+    PS> } ; 
+    PS> If($InputSplat.NonGeneric) {
+    PS>     if($pltGSmbx.keys -contains 'generic'){$pltGSmbx.remove('Generic')}
+    PS> } elseIf($Room -OR $Equipement) {
+    PS>     $pltGSmbx.add('Resource',$true) ;
+    PS> } else {
+    PS>     $pltGSmbx.add('Generic',$true ) ;
+    PS> } ;
+    PS> if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU @pltGSmbx)   ) {
+    PS> } else { Cleanup ; BREAK ;};
+    Demo mailbox OU call from verb-ex2010\new-mailboxShared
+    .EXAMPLE
+    PS> 'AUG','CMW','DIT','HAM','INT','RAD','SUB','VPI' | %{
+    PS>     $thiscode = $_ ; 
+    PS>     $pltWHTtl = get-colorcombo -Combo 34 ; 
+    PS>     $pltWHtype = get-colorcombo -Combo 40 ; 
+    PS>     $pltWHResult = get-colorcombo -Combo 46 ; 
+    PS>     $pltWHGen = get-colorcombo -Combo 66 ; 
+    PS>     $pltWHRes = get-colorcombo -Combo 36 ; 
+    PS>     $pltWHSec = get-colorcombo -Combo 17 ; 
+    PS>     write-host @pltWHTtl "`n`n==Site:$($thiscode):" ;
+    PS>     switch($thisCode){
+    PS>         'AUG'{ $mDN = "OU=AUG,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"} 
+    PS>         'CMW'{ $mDN = "OU=CMW,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"} 
+    PS>         'DIT'{ $mDN = "OU=DIT,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"} 
+    PS>         'HAM'{ $mDN = "OU=HAM,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"}
+    PS>         'INT'{ $mDN = "OU=INT,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"} 
+    PS>         'RAD'{ $mDN = "OU=RAD,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"} 
+    PS>         'SUB'{ $mDN = "OU=SUB,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"} 
+    PS>         'VPI'{ $mDN = "OU=VPI,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com"}  
+    PS>     }
+    PS>     $pltGSMx = [ordered]@{Sitecode = $thisCode ;modelDistinguishedName = $mDN ; type = $null ; verbose = $true } ; 
+    PS>     foreach($type in @('Generic','Resource','PermissionGroup')){
+    PS>       $pltGSMx.type = $type ; 
+    PS>       switch($type){
+    PS>           'Generic'{$pltW = $pltWHGen}
+    PS>           'Resource'{$pltW = $pltWHRes}
+    PS>           'PermissionGroup'{$pltW = $pltWHSec}
+    PS>       } ; 
+    PS>       write-host @pltW "Site:$($thiscode):$((get-date).ToString('HH:mm:ss')):get-sitembxou w`n$(($pltGSMx|out-string).trim())" ;     
+    PS>       write-host @pltWHResult "`n=>`n$((get-sitembxou @pltGSMx|out-string).trim())" ; 
+    PS>     } ; 
+    PS> } ; 
+    PS> 
+    Test code to check function across range of Migrations OUs & site codes (for presence of target OUs)
+    .EXAMPLE
+    PS> get-recipient -filter {recipienttypedetails -eq 'RemoteRoomMailbox'} | ?{$_.primarysmtpaddress -like '*@ditchwitch.com' } |select dist*
+    Code to poll RemoteMailbox Names distribution for a given brand domain
+    .EXAMPLE
+    PS> get-recipient -filter {recipienttypedetails -eq 'RemoteRoomMailbox'} | select @{Name="ParentOU";Expression={ ($_.distinguishedname.tostring() -split '(?<!\\),' | select -skip 1) -join "," } } | group ParentOU |  sort name | ft -a count,name
+    Code to poll RemoteMailbox ParentOU distribution for cloud Room mailboxes
+    .EXAMPLE
+    PS> $allOUs = Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server global.ad.toro.com
+    PS> $allOUs |?{$_.DistinguishedName  -match 'OU=Resources,.*OU=\w{3},OU=_MIGRATIONS,'}  | ft -a
+    Gathers all OUOs in the domain for analysis, with post filtering target OU trees
+    .EXAMPLE
+    PS> $rootous = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "DC=global,DC=ad,DC=toro,DC=com" -SearchScope onelevel
+    PS> $SiteRootOUs = @() ; 
+    PS> $SiteRootOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "DC=global,DC=ad,DC=toro,DC=com" -SearchScope onelevel |?{$_.distinguishedname -match '^OU=\w{3},' -OR $_.distinguishedname -match '^OU=PACRIM'} ; 
+    PS> $SiteRootOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com" -SearchScope onelevel |?{$_.distinguishedname -match '^OU=\w{3},'} ; 
+    PS> $siterootous.distinguishedname ; 
+    Gather all Root OUs
+    .EXAMPLE
+    $sitecodes = @() ; $siterootous.distinguishedname | %{ $_ | ?{$_ -match 'OU=(\w{3,6})'} | out-null ; $sitecodes += $matches[1]} ;
+    Build dyn syntecodes list
+    .EXAMPLE
+    PS> $allmc = get-mailcontact -resultsize unlimited ; 
+    PS> $allmc |  select @{Name="ParentOU";Expression={($_.distinguishedname.tostring() -split '(?<!\\),' | select -skip 1) -join "," } }  | group parentOU |  sort name | ft -a count,name ; 
+    Code to sample distribution of MailContact OUs
+    .EXAMPLE
+    PS> $alladu = get-aduser -filter * -ResultSetSize $null
+    PS> $alladu |  select @{Name="ParentOU";Expression={($_.distinguishedname.tostring() -split '(?<!\\),' | select -skip 1) -join "," } }  | group parentOU |  
+    PS>     ?{$_.parentOU -notmatch 'OU=New|Disabled|Generic|Email|Resource|Kiosk|Shared|System|Test|Other|Computers'} sort name | 
+    PS>     ft -a count,name ; 
+    Code to sample distribution of ADUser OUs (filter out non-working user standards (no onboarding/disabled etc))
+    .EXAMPLE
+    PS> $alldg = get-distributiongroup -ResultSize unlimited ;
+    PS> $alldg  |  select @{Name="ParentOU";Expression={($_.distinguishedname.tostring() -split '(?<!\\),' | select -skip 1) -join "," } }   | group parentOU |  sort name | ft -a count,name ;
+    Code to sample distribution of DistributionGroup OUs
     .LINK
+    https://github.com/tostka/verb-ADMS
     #>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'None')]
+    [Alias('get-SiteRoleOU')]
     PARAM (
-        [parameter(Mandatory=$True,HelpMessage="Specify the Toro 3-letter site code upon which to Query[LYN]")]
-        [string[]]$Sitecode
-        ,[parameter(Mandatory=$false,HelpMessage="Switch parameter indicating Generic Mbx OU (defaults Non-generic/Users OU).[-Generic]")]
-        [string[]]$Generic
-        ,[parameter(Mandatory=$false,HelpMessage="Switch parameter indicating Resource Mbx OU (defaults Non-generic/Users OU).[-Resource]")]
-        [string[]]$Resource
-    ) ;  # PARAM-E
+        [parameter(Mandatory=$false,HelpMessage="Specify the Toro 3-letter site code upon which to Query[LYN]")]
+            [string[]]$Sitecode,
+        [parameter(Mandatory=$false,HelpMessage="a Model DN to use to locate the resource in the same Site tree[DN]")]
+            [string[]]$modelDistinguishedName,
+        [parameter(ParameterSetName = 'Type',Mandatory=$false,HelpMessage="Optional Type of OU to resolve (alternative to older explicit parameters[-type Resource]")]
+            [AllowEmptyString()][AllowNull()]
+            [ValidateSet('Generic','Resource','PermissionGroup','DistributionGroup','Contact','Users','')]
+            [string]$Type,
+        [parameter(ParameterSetName = 'Generic', Mandatory=$true,HelpMessage="Switch parameter indicating Generic mailboxes OU (defaults Generic Email Accounts OU).[-Generic]")]
+            [switch]$Generic,
+        [parameter(ParameterSetName = 'Resource', Mandatory=$true,HelpMessage="Switch parameter indicating Resource mailboxes OU (defaults Email Resources OU).[-Resource]")]
+            [switch]$Resource,        
+        [parameter(ParameterSetName = 'PermissionGroup', Mandatory=$true,HelpMessage="Switch parameter indicating PermissionGroup Group OU (defaults Email Access OU).[-PermissionGroup]")]
+            [switch]$PermissionGroup,
+        [parameter(ParameterSetName = 'DistributionGroup', Mandatory=$true,HelpMessage="Switch parameter indicating DistributionGroup OU (defaults Distribution Groups OU).[-DistributionGroup]")]
+            [switch]$DistributionGroup,
+        [parameter(ParameterSetName = 'Contact', Mandatory=$true,HelpMessage="Switch parameter indicating Contact OU (defaults Email Contacts OU).[-Contact]")]
+            [switch]$Contact,
+        [parameter(ParameterSetName = 'Users', Mandatory=$true,HelpMessage="Switch parameter indicating Users OU (defaults Non-generic/Users OU).[-Users]")]
+            [switch]$Users,
+        [Parameter(HelpMessage = "Optional domaincontroller (skips discovery)[-domaincontroller 'Dc1']")]
+            [string]$domaincontroller
+    ) ;  # PARAM-E    
+    #region CONSTANTS_LOCAL ; #*------v CONSTANTS_LOCAL v------
+    # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
+    $DomainRoot = "DC=$($domtorfqdn -replace "\.",',DC=')" ; 
+    $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
+    # 3:46 PM 4/3/2026 add Migrations OU variant support
+    $rgxOUMigrations = ",OU=_MIGRATIONS,$($DomainRoot)$" ;
+    $rgxMigationsSite = ",OU=(\w+),OU=_MIGRATIONS,$($DomainRoot)$" ;
+    $srchBaseMigrations = "OU=_MIGRATIONS,$($DomainRoot)" ; 
+    $srchBaseRoot = "$($DomainRoot)"  ; 
+    $RootAddOUNames = @('PACRIM') ; 
+    [regex]$rgxRootAddOUNames = ('(' + (($RootAddOUNames |%{[regex]::escape($_)}) -join '|') + ')') ;
+    $rgxSiteOUNames = '^OU=\w{3},' ; 
+    # CONSTANTS THAT SPEC DEFAULT OUS: ROOT OU'S
+    $SharedRootOU = "OU=Generic Email Accounts"
+    $ResourceRootOU="^OU=Email Resources"
+    $PermissionGroupRootOU="OU=Email Access"
+    $DistributionGroupRootOU='^OU=Distribution Groups'
+    $ContactRootOU='^OU=Email Contacts'
+    $UsersRootOU='^OU=Users'
+    # MIGRATION ROOT SPECS
+    $SharedMigrOU = "OU=Generic Email Accounts"
+    $ResourceMigrOU="OU=Resources"
+    $PermissionGroupMigrOU="OU=Email Access"
+    $DistributionGroupMigrOU='^OU=Distribution Groups' # cmw is exempted in code
+    $ContactMigrOU='^OU=Email Contacts'
+    #$UsersMigrOU='^OU=Users' # EXEMPTIONS FOR EVERY SITE, THEY'RE COMPLETELY UNMANAGED/UNSTANDARDIZED!
+
+
+    #endregion CONSTANTS_LOCAL ; #*------^ END CONSTANTS_LOCAL ^------
+    # for backward  compat preserve the explicit switches, but boil them down into a Type that's used with switch blocks
+    if(-not $type -AND ($Generic -OR $Resource -OR $PermissionGroup)){
+        $Type = "" 
+        if($Generic){$Type = 'Generic'}
+        elseif($Resource){$Type = 'Resource'}
+        elseif($PermissionGroup){$Type = 'PermissionGroup'}
+        elseif($DistributionGroup){$Type = 'DistributionGroup'}
+        elseif($Contact){$Type = 'Contact'}
+        else {$Type = 'Generic'}
+    } ;
+    if(-not $type -AND -not ($Generic -OR $Resource -OR $PermissionGroup)){
+        write-warning "NONE OF EITHER: -TYPE -GENERIC -RESOURCE OR -PermissionGroup SPECIFIED!" ; 
+        RETURN ; 
+    }
     $verbose = ($VerbosePreference -eq "Continue") ; 
-    if($Generic){
-        $FindOU="^OU=Generic Email Accounts"
-    } elseif($Resource){
-        $FindOU="^OU=Email Resources"
+    if (!$domaincontroller) {
+        if($env:userdomain -eq 'CMW'){
+            $domaincontroller = get-addomaincontroller | select -expand hostname ;
+        }else{
+            $pltGDC = @{} ;
+            if ($DCExclude) { $pltGDC.add('Exclude', $DCExclude) };
+            if ($DCServerPrefix) { $pltGDC.add('ServerPrefix', $DCServerPrefix) };
+            if((gcm get-gcfast).parameters.keys -contains 'silent'){$pltGDC.add('silent', $true) };
+            if ($pltgdc.GetEnumerator().name) { $domaincontroller = get-gcfast @pltgdc } else { $domaincontroller = get-gcfast } ;
+        } ;
+    } ;
+    write-verbose "Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $($srchBaseRoot)" 
+    $SiteRootOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $srchBaseRoot -SearchScope onelevel -server $domaincontroller|
+        ?{$_.distinguishedname -match $rgxSiteOUNames -OR $_.distinguishedname -match $rgxRootAddOUNames} ; 
+    write-verbose "Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $($srchBaseMigrations)"
+    $SiteMigrOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $srchBaseMigrations -SearchScope onelevel -server $domaincontroller |
+        ?{$_.distinguishedname -match $rgxSiteOUNames}  ; 
+    $AllSiteOUDns = $(@($SiteRootOUs.distinguishedname);@($SiteMigrOUs.distinguishedname)) ; 
+    $AllSiteCodes = @() ; 
+    $AllSiteOUDns | %{ $_ | ?{$_ -match 'OU=(\w{3,6})'} | out-null ; $AllSiteCodes += $matches[1]} ;
+    if($AllSiteCodes -contains $SiteCode){
+        $smsg = "validated $($siteCode) is a valid/supported value" ; 
+        if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+    }else{
+        $smsg = "$($siteCode) IS *NOT* A VALID/SUPPORTED EXISTING SITECODE VALUE!" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        THROW $SMSG ; 
+        RETURN ; 
+    }
+
+    if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
+        if($modelDistinguishedName -match $rgxOUMigrations){
+            write-verbose "resolving FindOU on Migrations Sites" ; 
+            switch($type){                
+                'Generic' {
+                    #$SharedMigrOU = "OU=Generic Email Accounts" # 5:18 PM 4/9/2026 confirmed DIT
+                    $FindOU=$SharedMigrOU
+                }
+                'Resource' {
+                    #$ResourceMigrOU="OU=Resources"
+                    $FindOU=$ResourceMigrOU
+                }
+                'PermissionGroup' {
+                    #$PermissionGroupMigrOU="OU=Email Access"
+                    $FindOU=$PermissionGroupMigrOU
+                }
+                'DistributionGroup' {                    
+                    switch ($SiteCode){
+                        'CMW'{
+                            $FindOU="OU=Distribution"
+                        }
+                        default {
+                            #$DistributionGroupMigrOU='^OU=Distribution Groups'
+                            $FindOU=$DistributionGroupMigrOU
+                        }
+                    }
+                }
+                'Contact' {
+                    #$ContactMigrOU='^OU=Email Contacts'
+                    $FindOU=$ContactMigrOU
+                }
+                'Users' {
+                    switch($siteCode){
+                        'AUG'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=User Accounts' ; 
+                        }
+                        'DIT'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=People' ; 
+                        }
+                        'HAM'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=User Accounts' ; 
+                        }
+                        'INT'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=Departments' ; 
+                        }
+                        'RAD'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^User Accounts' ; 
+                        }
+                        'VPI'{
+                            #$UsersMigrOU='^OU=Users'
+                            #$FindOU=$UsersMigrOU ;
+                            $FindOU='^OU=VD' ; 
+                        }
+                        DEFAULT{
+                            $FindOU='^OU=Users' ; 
+                        }
+                    }
+                }
+                default{
+                    $FindOU="OU=Generic Email Accounts"
+                } ;
+            }
+            <#
+            #$FindOU = "OU=Email\sAccess," ;
+            if($Generic){
+                $FindOU="OU=Generic Email Accounts" # 5:18 PM 4/9/2026 confirmed DIT
+            } elseif($Resource){
+                $FindOU="OU=Resources"
+            } elseif($Shared){
+                $FindOU="OU=Generic Email Accounts"
+            } elseif($PermissionGroup){
+                $FindOU="OU=Email Access,"
+            } else {
+                $FindOU="OU=Generic Email Accounts"
+            } ;
+            # MIGHT HAVE TO TEST A SERIES, IF LF REALLY MANGLED THE PATHS ACROSS DIVISIONS!
+            #>
+        }ELSE{
+            write-verbose "resolving FindOU on root Sites" ; 
+            switch($type){
+                'Generic' {
+                    #$SharedRootOU = "OU=Generic Email Accounts"
+                    $FindOU=$SharedRootOU
+                }
+                'Resource' {
+                    #$ResourceRootOU="^OU=Email Resources"
+                    $FindOU=$ResourceRootOU
+                }                
+                'PermissionGroup' {
+                    #$PermissionGroupRootOU="OU=Email Access"
+                    $FindOU=$PermissionGroupRootOU
+                } 
+                 'DistributionGroup' {
+                    #$DistributionGroupRootOU='^OU=Distribution Groups' 
+                    $FindOU=$DistributionGroupRootOU
+                } 
+                'Contact' {
+                    #$ContactRootOU='^OU=Email Contacts' 
+                    $FindOU=$ContactRootOU
+                } 
+                'Users' {
+                    #$UsersRootOU='^OU=Users' 
+                    $FindOU=$UsersRootOU ; 
+                }
+                default{
+                    $FindOU=$UsersRootOU
+                } ;
+            }
+            <#
+            #$FindOU = "OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
+            if($Generic){
+                $FindOU="OU=Generic Email Accounts"
+            } elseif($Resource){
+                $FindOU="^OU=Email Resources"
+            } else {
+                $FindOU="OU=Users"
+            } ;
+            #>
+        }
+    } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
+        # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
+        switch($type){
+            'Generic' {
+                $FindOU="^OU=Generic Email Accounts"
+            }
+            'Resource' {
+                $FindOU="^OU=Email Resources"
+            }
+                
+            'Shared' {
+                $FindOU="OU=Generic Email Accounts"
+            }
+            'PermissionGroup' {
+                $FindOU="OU=Email Access,"
+            } 
+             'DistributionGroup' {
+                    $FindOU="OU=Email Access"
+            } 
+            'Contact' {
+                $FindOU="OU=Email Access"
+            } 
+            default{
+                $FindOU="^OU=Users"
+            } ;
+        }
+        <#
+        if($Generic){
+            $FindOU="^OU=Generic Email Accounts"
+        } elseif($Resource){
+            $FindOU="^OU=Email Resources"
+        } else {
+            $FindOU="^OU=Users"
+        } ;
+        #>
     } else {
-        $FindOU="^OU=Users"
+        throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
     } ;
     $error.clear() ;
     TRY {
-        $OUPath = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | ?{ $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | select distinguishedname).distinguishedname.tostring() ;
-        If($OUPath -isnot [string]){      # post-verification to ensure we've got a single OU spec
-            write-error "$( (get-date).ToString("HH:mm:ss") ):WARNING AD OU SEARCH SITE:$($InputSplat.SiteCode), FindOU:$($FindOU), FAILED TO RETURN A SINGLE OU...";
-            $OUPath | select distinguishedname ;
-            write-error "$((get-date).ToString('HH:mm:ss')):EXITING!";
-            Exit ;
-        } ;
-        write-output $OUPath
+        if($SiteCode -AND -not $modelDistinguishedName){
+            write-verbose "Running -SiteCode:$($Sitecode) root-only lookup (no migrations tree resolution supported)" ; 
+            $OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | ?{ $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | select distinguishedname).distinguishedname.tostring() ;
+        }elseif($SiteCode -AND $modelDistinguishedName){
+            write-verbose "Running expanded modelDN + SiteCode:$($Sitecode) lookup (with migrations tree resolution supported)" ; 
+            if($modelDistinguishedName -match $rgxOUMigrations){
+                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,OU=_MIGRATIONS,$($DomainRoot)$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                #OU=Email\sAccess,.*OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,
+                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                # -SearchScope onelevel 
+                if($RootSrch = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=$($SiteCode),$($srchBaseMigrations)" -server $domaincontroller){
+                    write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS,"
+                    if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," }){
+                        $OuDN = $OuDN.distinguishedname.tostring() ; 
+                    }elseif($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode),OU=_MIGRATIONS," }){
+                        # some migrations OUs don't have objects below ,OU=_TTC_Sync_CMW_NoSync, check from root
+                        $OuDN = $OuDN.distinguishedname.tostring() ;                     
+                    }else{
+                        $smsg = "UNABLE TO RESOLVE TARGET: -FINDOU:$($FindOU) in scope: OU=$($SiteCode),$($srchBaseMigrations)" ; 
+                        write-warning $smsg ; 
+                        throw $smsg ; 
+                    }
+                }else{
+                    $smsg = "UNABLE TO RESOLVE TARGET -scope: OU=$($SiteCode),$($srchBaseMigrations)~" ; 
+                    write-warning $smsg ; 
+                    throw $smsg ; 
+                } ; 
+            }else{
+                # non-Migr, strict OU combo: 
+                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                # -SearchScope onelevel 
+                if($RootSrch = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=$($SiteCode),$($srchBaseRoot)" -server $domaincontroller){
+                    write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU).OU=$($SiteCode),"
+                    # 1st check for target directly below the SiteOU folder
+                    if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).OU=$($SiteCode)," }){
+                        $OuDN = $OuDN.distinguishedname.tostring() ; 
+                    }elseif($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode)," }){
+                        # then as fall back, in case it's been nested down a layer, support subtree search syntax
+                        $OuDN = $OuDN.distinguishedname.tostring() ; 
+                    }else{
+                        $smsg = "UNABLE TO RESOLVE TARGET: -FINDOU:$($FindOU) in scope: OU=$($SiteCode),$($srchBaseRoot)" ; 
+                        write-warning $smsg ; 
+                        throw $smsg ; 
+                    }                
+                }else{
+                    $smsg = "UNABLE TO RESOLVE TARGET -scope: OU=$($SiteCode),$($srchBaseMigrations)~" ; 
+                    write-warning $smsg ; 
+                    throw $smsg ; 
+                } ; 
+            }
+        } ; 
+        if($OUdn){
+            If($OUdn -isnot [string]){      # post-verification to ensure we've got a single OU spec
+                $smsg = "AD OU SEARCH SITE:$($InputSplat.SiteCode), FindOU:$($FindOU), FAILED TO RETURN A SINGLE OU..."
+                $smsg += "`n(may have to specify a -modelDistinguishedName, for MIGRATIONS ou SUBTREES)" ;
+                write-warning $smsg ; 
+                $OUdn | select distinguishedname ;
+                write-error "$((get-date).ToString('HH:mm:ss')):EXITING!";
+                return ;
+            } else{
+                $OUdn | write-output  ; 
+            } ; 
+        }else{
+            $false | write-output 
+        }     
     } CATCH {
-        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
-        Exit #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ; 
-    } ; 
+        $ErrTrapd=$Error[0] ;
+        write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+        $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+        write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+    } ;
+    
 }
 
 #*------^ get-SiteMbxOU.ps1 ^------
@@ -4146,6 +4823,60 @@ function test-AADUserSync {
 #*------^ test-AADUserSync.ps1 ^------
 
 
+#*------v test-ADComputerName.ps1 v------
+Function test-ADComputerName{
+    <#
+    .SYNOPSIS
+    test-ADComputerName.ps1 - Validate that passed string is an ADComputer object name
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2024-
+    FileName    : test-ADComputerName.ps1
+    License     : MIT License
+    Copyright   : (c) 2024 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    AddedCredit : Luc Fullenwarth
+    AddedWebsite: https://gravatar.com/fullenw1
+    AddedTwitter: twitter.com/LFullenwarth
+    REVISIONS
+    * 8:44 PM 3/26/2026 move vnet -> vad
+    * 2:03 PM 6/6/2024 rounded out param validation sample to full function
+    * 8/5/20 LF posted arti
+    .DESCRIPTION
+    test-ADComputerName.ps1 - Validate that passed string is an ADComputer object name
+    .PARAMETER  ComputerName
+    ComputerName string to be validated[-ComputerName SomeBox]
+    .INPUTS
+    System.String Accepts piped input
+    .OUTPUTS
+    System.Boolean
+    .EXAMPLE
+    PS> test-ADComputerName.ps1 -ComputerName $env:computername
+    Demo simple test
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://bitbucket.org/tostka/powershell/
+    .LINK
+    https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
+    #>    
+    #Requires -Modules ActiveDirectory
+    PARAM(
+        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
+            [ValidateScript({Get-ADComputer -Identity $PSItem})]
+            [ValidateNotNullOrEmpty()]
+            [string]$ComputerName
+    )
+    write-output $true ; 
+}
+
+#*------^ test-ADComputerName.ps1 ^------
+
+
 #*------v test-ADUserEmployeeNumber.ps1 v------
 function test-ADUserEmployeeNumber {
     <#
@@ -4327,6 +5058,185 @@ function test-ADUserEmployeeNumber {
 #*------^ test-ADUserEmployeeNumber.ps1 ^------
 
 
+#*------v test-CredentialsTDO.ps1 v------
+function test-CredentialsTDO{
+        <#
+        .SYNOPSIS
+        test-CredentialsTDO - tests provided uid+pw cred combo
+        .NOTES
+        Version     : 0.0.
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 20250711-0423PM
+        FileName    : test-CredentialsTDO.ps1
+        License     : (none asserted)
+        Copyright   : (none asserted)
+        Github      : https://github.com/tostka/verb-io
+        Tags        : Powershell,ActiveDirectory,Account,Credential
+        AddedCredit : Michel de Rooij / michel@eightwone.com
+        AddedWebsite: http://eightwone.com
+        AddedTwitter: URL        
+        REVISIONS
+        * 4:33 PM 10/16/2025 logic fix, self-contained, brought in alt deps; CBH demo1 fix
+        * 12:59 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
+        * 1:44 PM 8/8/2025 ren test-Credentials821 -> test-CredentialsTDO, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
+        11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
+        .DESCRIPTION
+        test-CredentialsTDO - tests provided uid+pw cred combo
+                
+        .INPUTS
+        None, no piped input.
+        .OUTPUTS
+        System.Object summary of Exchange server descriptors, and service statuses.
+        .EXAMPLE
+        PS> $tcred = get-credential ; 
+        PS> if(test-CredentialsTDO -UserName $tcred.username -Password $tcred.GetNetworkCredential().Password){
+        PS>     write-host -foregroundcolor green "Credential validated" ; 
+        PS> } ; 
+        .LINK
+        https://github.org/tostka/verb-ex2010/
+        #>
+        [CmdletBinding()]
+        [alias('test-Credentials')]
+        PARAM(            
+            [Parameter(HelpMessage = "Account to be tested")]
+                [Alias('Account','logon')]
+                [string]$UserName,
+            [Parameter(Mandatory=$true,HelpMessage = "Account password to be tested (securestring or plain text)")]
+                [Alias('AdminPassword')]
+                #[string]
+                $Password                       
+        ) ;
+        switch ($Password.gettype().fullname){
+            'System.String' {
+                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
+                $PlainTextPassword= $Password ; 
+            }
+            'System.Security.SecureString'{
+                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( $Password ))
+                $tmpCred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("None",$Password ) ;                
+                #$PlainTextPassword = $Password.GetNetworkCredential().Password 
+                $PlainTextPassword = $tmpcred.GetNetworkCredential().Password ; 
+                remove-variable tmpCred
+            }
+            default{
+                $smsg = "Unrecognized -Password type:$($Password.gettype().fullname)" ; 
+                $smsg += "`nSpecify as either plain text or SecureSTring" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                throw $smsg ; 
+            }
+        }
+        #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
+        if(get-command FullPlainTextAccount -ea SilentlyContinue){
+            $FullPlainTextAccount= get-FullDomainAccountTDO -Account $UserName ;
+        }else{
+            #write-warning "missing:FullPlainTextAccount(), skipping account format specification" ; 
+            switch -regex ($username){
+                '(.*)\\(.*)' {
+                    $Parts = $UserName.split('\') ; 
+                    $FullPlainTextAccount = "$($Parts[0].ToUpper())\$($Parts[1])" ; write-host  "UserName is in Legacy format" ; 
+                    break ; 
+                } ; 
+                '(.*)@(.*)' {
+                    write-host  "Username is in UPN format"  ; 
+                    $FullPlainTextAccount = $UserName ; 
+                    break ; 
+                }
+                default{
+                    if($env:USERDOMAIN){
+                        $FullPlainTextAccount = "$($env:USERDOMAIN)\$($UserName)" ; 
+                        write-host  "simple string: Assuming Logon, asserting `$env:USERDOMAIN for domain in legacy format" ; 
+                    } else{
+                        throw "Unrecognized -Username format:$($Username)" ; 
+                    };
+                    break ;  
+                } ; 
+            } ; 
+        }
+        TRY {
+            if($env:USERDOMAIN -eq $env:COMPUTERNAME){
+                write-host "`$env:USERDOMAIN -eq `$env:COMPUTERNAME: => non-domain-joined, checking Test-LocalCredentialTDO()" ; 
+                $Username = $FullPlainTextAccount.split("\")[-1]
+                if(get-command Test-LocalCredentialTDO){
+                    Return $( Test-LocalCredentialTDO -UserName $Username -Password $PlainTextPassword)
+                }else{
+                    #throw "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  
+                    $smsg = "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  write-host -foregroundcolor yellow $smsg ; 
+                    TRY {Add-Type -AssemblyName System.DirectoryServices.AccountManagement} CATCH {} ; 
+                    $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine',$ComputerName)
+                    Return $($DS.ValidateCredentials($UserName, $Password))
+                } ; 
+            }else{
+                $dc= New-Object DirectoryServices.DirectoryEntry( $Null, $FullPlainTextAccount, $PlainTextPassword)
+                If($dc.Name) {
+                    return $true
+                }Else {
+                    Return $false
+                }
+            }
+        }CATCH {
+            Return $false
+        }
+        Return $false        
+    }
+
+#*------^ test-CredentialsTDO.ps1 ^------
+
+
+#*------v test-isADComputerName.ps1 v------
+Function test-isADComputerName{
+    <#
+    .SYNOPSIS
+    test-isADComputerName.ps1 - Validate that passed string is an ADComputer object name
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2024-
+    FileName    : test-isADComputerName.ps1
+    License     : MIT License
+    Copyright   : (c) 2024 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    AddedCredit : Luc Fullenwarth
+    AddedWebsite: https://gravatar.com/fullenw1
+    AddedTwitter: twitter.com/LFullenwarth
+    REVISIONS
+    * 2:03 PM 6/6/2024 rounded out param validation sample to full function
+    * 8/5/20 LF posted arti
+    .DESCRIPTION
+    test-isADComputerName.ps1 - Validate that passed string is an ADComputer object name
+    .PARAMETER  ComputerName
+    ComputerName string to be validated[-ComputerName SomeBox]
+    .INPUTS
+    System.String Accepts piped input
+    .OUTPUTS
+    System.Boolean
+    .EXAMPLE
+    PS> test-isADComputerName.ps1 -ComputerName $env:computername
+    Demo simple test
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://bitbucket.org/tostka/powershell/
+    .LINK
+    https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
+    #>    
+    #Requires -Modules ActiveDirectory
+    PARAM(
+        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
+            [ValidateScript({Get-ADComputer -Identity $PSItem})]
+            [ValidateNotNullOrEmpty()]
+            [string]$ComputerName
+    )
+    write-output $true ; 
+}
+
+#*------^ test-isADComputerName.ps1 ^------
+
+
 #*------v umount-ADForestDrives.ps1 v------
 function unmount-ADForestDrives {
     <#
@@ -4497,7 +5407,7 @@ Function test-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserDetailsTDO,get-ADUserViaUPN,Get-ComputerADSiteName,Get-ComputerADSiteSummary,get-DCLocal,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADUserEmployeeNumber,unmount-ADForestDrives,test-Password -Alias *
+Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserDetailsTDO,get-ADUserViaUPN,Get-ComputerADSiteName,Get-ComputerADSiteSummary,get-CredentialsTDO,get-DCLocal,Get-ForestRootNCTDO,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,Get-RootNCTDO,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADComputerName,test-ADUserEmployeeNumber,test-CredentialsTDO,test-isADComputerName,unmount-ADForestDrives,test-Password -Alias *
 
 
 
@@ -4505,8 +5415,8 @@ Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU30WCYjMhLbYftMME6l+RJ/ks
-# 9LagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUDXztrUgmAAAlq+SEFhgYG0Hz
+# 0rygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4521,9 +5431,9 @@ Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTBIpRo
-# /now6vqrnEi0sSfbNe4rHjANBgkqhkiG9w0BAQEFAASBgEC7+97I3H11TIE6cOH/
-# 5buL9Ieo0FODk6ZVCWsOav1loPdv7rB765K/cWtoYdoZq3XdNzJlMzi5Mza3XNKR
-# s7jd4NIHEcnJR4fU2785DtOgtphmPOzT9Xrvb6CLOswaeSAQAmTiW42njU08SZkj
-# 1IibMkbUlBBFr/HKleulOiRT
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTEJ9PR
+# 8X1ZLEC/VwvhcT10Bxt5hjANBgkqhkiG9w0BAQEFAASBgIk5QftSBeLjGmKfR0OK
+# yyn+1CnVrbBmhAnC+1svVvtiVd2ITs8hN4S3A5paaKTVozZPez7/YVUOyX8StDoL
+# NZ3gNiXq4pQloCl/yrWlnuyPiukCpL685x9JkIFodIt2yqbu1Gw5g7T8taJngDOB
+# 3qcFzNVyeDo9gH1HnZSktTq6
 # SIG # End signature block

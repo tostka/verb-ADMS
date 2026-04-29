@@ -1,11 +1,11 @@
-﻿# VERB-adms.psm1
+﻿# verb-ADMS.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 6.1.0.0
+  Version     : 6.2.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -3168,6 +3168,7 @@ function get-SiteMbxOU {
     Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell,ActiveDirectory
     REVISIONS
+    * 8:05 AM 4/23/2026 added more verbose echoes ; 522: corrected '.' in regex with proper ',' comma.
     * 12:58 PM 4/21/2026 fixed srchBaseRoot typo: (had MIgrations OU string as part of target for non-migr tree search)
     * 9:31 AM 4/16/2026 add: example for resolving variant types; uses constants at 
         top for the standardized RootOU & MigrOU names; has to use SiteCode switching 
@@ -3387,325 +3388,348 @@ function get-SiteMbxOU {
         [Parameter(HelpMessage = "Optional domaincontroller (skips discovery)[-domaincontroller 'Dc1']")]
             [string]$domaincontroller
     ) ;  # PARAM-E    
-    #region CONSTANTS_LOCAL ; #*------v CONSTANTS_LOCAL v------
-    # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
-    $DomainRoot = "DC=$($domtorfqdn -replace "\.",',DC=')" ; 
-    $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
-    # 3:46 PM 4/3/2026 add Migrations OU variant support
-    $rgxOUMigrations = ",OU=_MIGRATIONS,$($DomainRoot)$" ;
-    $rgxMigationsSite = ",OU=(\w+),OU=_MIGRATIONS,$($DomainRoot)$" ;
-    $srchBaseMigrations = "OU=_MIGRATIONS,$($DomainRoot)" ; 
-    $srchBaseRoot = "$($DomainRoot)"  ; 
-    $RootAddOUNames = @('PACRIM') ; 
-    [regex]$rgxRootAddOUNames = ('(' + (($RootAddOUNames |%{[regex]::escape($_)}) -join '|') + ')') ;
-    $rgxSiteOUNames = '^OU=\w{3},' ; 
-    # CONSTANTS THAT SPEC DEFAULT OUS: ROOT OU'S
-    $SharedRootOU = "OU=Generic Email Accounts"
-    $ResourceRootOU="^OU=Email Resources"
-    $PermissionGroupRootOU="OU=Email Access"
-    $DistributionGroupRootOU='^OU=Distribution Groups'
-    $ContactRootOU='^OU=Email Contacts'
-    $UsersRootOU='^OU=Users'
-    # MIGRATION ROOT SPECS
-    $SharedMigrOU = "OU=Generic Email Accounts"
-    $ResourceMigrOU="OU=Resources"
-    $PermissionGroupMigrOU="OU=Email Access"
-    $DistributionGroupMigrOU='^OU=Distribution Groups' # cmw is exempted in code
-    $ContactMigrOU='^OU=Email Contacts'
-    #$UsersMigrOU='^OU=Users' # EXEMPTIONS FOR EVERY SITE, THEY'RE COMPLETELY UNMANAGED/UNSTANDARDIZED!
+    BEGIN{
+        #region CONSTANTS_LOCAL ; #*------v CONSTANTS_LOCAL v------
+        # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
+        $DomainRoot = "DC=$($domtorfqdn -replace "\.",',DC=')" ; 
+        $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
+        # 3:46 PM 4/3/2026 add Migrations OU variant support
+        $rgxOUMigrations = ",OU=_MIGRATIONS,$($DomainRoot)$" ;
+        $rgxMigationsSite = ",OU=(\w+),OU=_MIGRATIONS,$($DomainRoot)$" ;
+        $srchBaseMigrations = "OU=_MIGRATIONS,$($DomainRoot)" ; 
+        $srchBaseRoot = "$($DomainRoot)"  ; 
+        $RootAddOUNames = @('PACRIM') ; 
+        [regex]$rgxRootAddOUNames = ('(' + (($RootAddOUNames |%{[regex]::escape($_)}) -join '|') + ')') ;
+        $rgxSiteOUNames = '^OU=\w{3},' ; 
+        # CONSTANTS THAT SPEC DEFAULT OUS: ROOT OU'S
+        $SharedRootOU = "OU=Generic Email Accounts"
+        $ResourceRootOU="^OU=Email Resources"
+        $PermissionGroupRootOU="OU=Email Access"
+        $DistributionGroupRootOU='^OU=Distribution Groups'
+        $ContactRootOU='^OU=Email Contacts'
+        $UsersRootOU='^OU=Users'
+        # MIGRATION ROOT SPECS
+        $SharedMigrOU = "OU=Generic Email Accounts"
+        $ResourceMigrOU="OU=Resources"
+        $PermissionGroupMigrOU="OU=Email Access"
+        $DistributionGroupMigrOU='^OU=Distribution Groups' # cmw is exempted in code
+        $ContactMigrOU='^OU=Email Contacts'
+        #$UsersMigrOU='^OU=Users' # EXEMPTIONS FOR EVERY SITE, THEY'RE COMPLETELY UNMANAGED/UNSTANDARDIZED!
 
 
-    #endregion CONSTANTS_LOCAL ; #*------^ END CONSTANTS_LOCAL ^------
-    # for backward  compat preserve the explicit switches, but boil them down into a Type that's used with switch blocks
-    if(-not $type -AND ($Generic -OR $Resource -OR $PermissionGroup)){
-        $Type = "" 
-        if($Generic){$Type = 'Generic'}
-        elseif($Resource){$Type = 'Resource'}
-        elseif($PermissionGroup){$Type = 'PermissionGroup'}
-        elseif($DistributionGroup){$Type = 'DistributionGroup'}
-        elseif($Contact){$Type = 'Contact'}
-        else {$Type = 'Generic'}
-    } ;
-    if(-not $type -AND -not ($Generic -OR $Resource -OR $PermissionGroup)){
-        write-warning "NONE OF EITHER: -TYPE -GENERIC -RESOURCE OR -PermissionGroup SPECIFIED!" ; 
-        RETURN ; 
-    }
-    $verbose = ($VerbosePreference -eq "Continue") ; 
-    if (!$domaincontroller) {
-        if($env:userdomain -eq 'CMW'){
-            $domaincontroller = get-addomaincontroller | select -expand hostname ;
-        }else{
-            $pltGDC = @{} ;
-            if ($DCExclude) { $pltGDC.add('Exclude', $DCExclude) };
-            if ($DCServerPrefix) { $pltGDC.add('ServerPrefix', $DCServerPrefix) };
-            if((gcm get-gcfast).parameters.keys -contains 'silent'){$pltGDC.add('silent', $true) };
-            if ($pltgdc.GetEnumerator().name) { $domaincontroller = get-gcfast @pltgdc } else { $domaincontroller = get-gcfast } ;
+        #endregion CONSTANTS_LOCAL ; #*------^ END CONSTANTS_LOCAL ^------
+        # for backward  compat preserve the explicit switches, but boil them down into a Type that's used with switch blocks
+        if(-not $type -AND ($Generic -OR $Resource -OR $PermissionGroup)){
+            $Type = "" 
+            if($Generic){$Type = 'Generic'}
+            elseif($Resource){$Type = 'Resource'}
+            elseif($PermissionGroup){$Type = 'PermissionGroup'}
+            elseif($DistributionGroup){$Type = 'DistributionGroup'}
+            elseif($Contact){$Type = 'Contact'}
+            else {$Type = 'Generic'}
         } ;
-    } ;
-    write-verbose "Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $($srchBaseRoot)" 
-    $SiteRootOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $srchBaseRoot -SearchScope onelevel -server $domaincontroller|
-        ?{$_.distinguishedname -match $rgxSiteOUNames -OR $_.distinguishedname -match $rgxRootAddOUNames} ; 
-    write-verbose "Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $($srchBaseMigrations)"
-    $SiteMigrOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $srchBaseMigrations -SearchScope onelevel -server $domaincontroller |
-        ?{$_.distinguishedname -match $rgxSiteOUNames}  ; 
-    $AllSiteOUDns = $(@($SiteRootOUs.distinguishedname);@($SiteMigrOUs.distinguishedname)) ; 
-    $AllSiteCodes = @() ; 
-    $AllSiteOUDns | %{ $_ | ?{$_ -match 'OU=(\w{3,6})'} | out-null ; $AllSiteCodes += $matches[1]} ;
-    if($AllSiteCodes -contains $SiteCode){
-        $smsg = "validated $($siteCode) is a valid/supported value" ; 
-        if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-    }else{
-        $smsg = "$($siteCode) IS *NOT* A VALID/SUPPORTED EXISTING SITECODE VALUE!" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        THROW $SMSG ; 
-        RETURN ; 
-    }
+        if(-not $type -AND -not ($Generic -OR $Resource -OR $PermissionGroup)){
+            write-warning "NONE OF EITHER: -TYPE -GENERIC -RESOURCE OR -PermissionGroup SPECIFIED!" ; 
+            RETURN ; 
+        }
+        $verbose = ($VerbosePreference -eq "Continue") ; 
+        if (!$domaincontroller) {
+            if($env:userdomain -eq 'CMW'){
+                $domaincontroller = get-addomaincontroller | select -expand hostname ;
+            }else{
+                $pltGDC = @{} ;
+                if ($DCExclude) { $pltGDC.add('Exclude', $DCExclude) };
+                if ($DCServerPrefix) { $pltGDC.add('ServerPrefix', $DCServerPrefix) };
+                if((gcm get-gcfast).parameters.keys -contains 'silent'){$pltGDC.add('silent', $true) };
+                if ($pltgdc.GetEnumerator().name) { $domaincontroller = get-gcfast @pltgdc } else { $domaincontroller = get-gcfast } ;
+            } ;
+        } ;
+        write-verbose "Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $($srchBaseRoot)" 
+        $SiteRootOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $srchBaseRoot -SearchScope onelevel -server $domaincontroller|
+            ?{$_.distinguishedname -match $rgxSiteOUNames -OR $_.distinguishedname -match $rgxRootAddOUNames} ; 
+        write-verbose "Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $($srchBaseMigrations)"
+        $SiteMigrOUs += Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $srchBaseMigrations -SearchScope onelevel -server $domaincontroller |
+            ?{$_.distinguishedname -match $rgxSiteOUNames}  ; 
+        $AllSiteOUDns = $(@($SiteRootOUs.distinguishedname);@($SiteMigrOUs.distinguishedname)) ; 
+        $AllSiteCodes = @() ; 
+        $AllSiteOUDns | %{ $_ | ?{$_ -match 'OU=(\w{3,6})'} | out-null ; $AllSiteCodes += $matches[1]} ;
+        if($AllSiteCodes -contains $SiteCode){
+            $smsg = "validated $($siteCode) is a valid/supported value" ; 
+            if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        }else{
+            $smsg = "$($siteCode) IS *NOT* A VALID/SUPPORTED EXISTING SITECODE VALUE!" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            THROW $SMSG ; 
+            RETURN ; 
+        }
 
-    if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
-        if($modelDistinguishedName -match $rgxOUMigrations){
-            write-verbose "resolving FindOU on Migrations Sites" ; 
-            switch($type){                
-                'Generic' {
-                    #$SharedMigrOU = "OU=Generic Email Accounts" # 5:18 PM 4/9/2026 confirmed DIT
-                    $FindOU=$SharedMigrOU
-                }
-                'Resource' {
-                    #$ResourceMigrOU="OU=Resources"
-                    $FindOU=$ResourceMigrOU
-                }
-                'PermissionGroup' {
-                    #$PermissionGroupMigrOU="OU=Email Access"
-                    $FindOU=$PermissionGroupMigrOU
-                }
-                'DistributionGroup' {                    
-                    switch ($SiteCode){
-                        'CMW'{
-                            $FindOU="OU=Distribution"
-                        }
-                        default {
-                            #$DistributionGroupMigrOU='^OU=Distribution Groups'
-                            $FindOU=$DistributionGroupMigrOU
+        if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
+            if($modelDistinguishedName -match $rgxOUMigrations){
+                write-verbose "resolving FindOU on Migrations Sites" ; 
+                switch($type){                
+                    'Generic' {
+                        #$SharedMigrOU = "OU=Generic Email Accounts" # 5:18 PM 4/9/2026 confirmed DIT
+                        $FindOU=$SharedMigrOU
+                    }
+                    'Resource' {
+                        #$ResourceMigrOU="OU=Resources"
+                        $FindOU=$ResourceMigrOU
+                    }
+                    'PermissionGroup' {
+                        #$PermissionGroupMigrOU="OU=Email Access"
+                        $FindOU=$PermissionGroupMigrOU
+                    }
+                    'DistributionGroup' {                    
+                        switch ($SiteCode){
+                            'CMW'{
+                                $FindOU="OU=Distribution"
+                            }
+                            default {
+                                #$DistributionGroupMigrOU='^OU=Distribution Groups'
+                                $FindOU=$DistributionGroupMigrOU
+                            }
                         }
                     }
-                }
-                'Contact' {
-                    #$ContactMigrOU='^OU=Email Contacts'
-                    $FindOU=$ContactMigrOU
-                }
-                'Users' {
-                    switch($siteCode){
-                        'AUG'{
-                            #$UsersMigrOU='^OU=Users'
-                            #$FindOU=$UsersMigrOU ;
-                            $FindOU='^OU=User Accounts' ; 
-                        }
-                        'DIT'{
-                            #$UsersMigrOU='^OU=Users'
-                            #$FindOU=$UsersMigrOU ;
-                            $FindOU='^OU=People' ; 
-                        }
-                        'HAM'{
-                            #$UsersMigrOU='^OU=Users'
-                            #$FindOU=$UsersMigrOU ;
-                            $FindOU='^OU=User Accounts' ; 
-                        }
-                        'INT'{
-                            #$UsersMigrOU='^OU=Users'
-                            #$FindOU=$UsersMigrOU ;
-                            $FindOU='^OU=Departments' ; 
-                        }
-                        'RAD'{
-                            #$UsersMigrOU='^OU=Users'
-                            #$FindOU=$UsersMigrOU ;
-                            $FindOU='^User Accounts' ; 
-                        }
-                        'VPI'{
-                            #$UsersMigrOU='^OU=Users'
-                            #$FindOU=$UsersMigrOU ;
-                            $FindOU='^OU=VD' ; 
-                        }
-                        DEFAULT{
-                            $FindOU='^OU=Users' ; 
+                    'Contact' {
+                        #$ContactMigrOU='^OU=Email Contacts'
+                        $FindOU=$ContactMigrOU
+                    }
+                    'Users' {
+                        switch($siteCode){
+                            'AUG'{
+                                #$UsersMigrOU='^OU=Users'
+                                #$FindOU=$UsersMigrOU ;
+                                $FindOU='^OU=User Accounts' ; 
+                            }
+                            'DIT'{
+                                #$UsersMigrOU='^OU=Users'
+                                #$FindOU=$UsersMigrOU ;
+                                $FindOU='^OU=People' ; 
+                            }
+                            'HAM'{
+                                #$UsersMigrOU='^OU=Users'
+                                #$FindOU=$UsersMigrOU ;
+                                $FindOU='^OU=User Accounts' ; 
+                            }
+                            'INT'{
+                                #$UsersMigrOU='^OU=Users'
+                                #$FindOU=$UsersMigrOU ;
+                                $FindOU='^OU=Departments' ; 
+                            }
+                            'RAD'{
+                                #$UsersMigrOU='^OU=Users'
+                                #$FindOU=$UsersMigrOU ;
+                                $FindOU='^User Accounts' ; 
+                            }
+                            'VPI'{
+                                #$UsersMigrOU='^OU=Users'
+                                #$FindOU=$UsersMigrOU ;
+                                $FindOU='^OU=VD' ; 
+                            }
+                            DEFAULT{
+                                $FindOU='^OU=Users' ; 
+                            }
                         }
                     }
+                    default{
+                        $FindOU="OU=Generic Email Accounts"
+                    } ;
                 }
-                default{
+                <#
+                #$FindOU = "OU=Email\sAccess," ;
+                if($Generic){
+                    $FindOU="OU=Generic Email Accounts" # 5:18 PM 4/9/2026 confirmed DIT
+                } elseif($Resource){
+                    $FindOU="OU=Resources"
+                } elseif($Shared){
+                    $FindOU="OU=Generic Email Accounts"
+                } elseif($PermissionGroup){
+                    $FindOU="OU=Email Access,"
+                } else {
                     $FindOU="OU=Generic Email Accounts"
                 } ;
+                # MIGHT HAVE TO TEST A SERIES, IF LF REALLY MANGLED THE PATHS ACROSS DIVISIONS!
+                #>
+            }ELSE{
+                write-verbose "resolving FindOU on root Sites" ; 
+                switch($type){
+                    'Generic' {
+                        #$SharedRootOU = "OU=Generic Email Accounts"
+                        $FindOU=$SharedRootOU
+                    }
+                    'Resource' {
+                        #$ResourceRootOU="^OU=Email Resources"
+                        $FindOU=$ResourceRootOU
+                    }                
+                    'PermissionGroup' {
+                        #$PermissionGroupRootOU="OU=Email Access"
+                        $FindOU=$PermissionGroupRootOU
+                    } 
+                     'DistributionGroup' {
+                        #$DistributionGroupRootOU='^OU=Distribution Groups' 
+                        $FindOU=$DistributionGroupRootOU
+                    } 
+                    'Contact' {
+                        #$ContactRootOU='^OU=Email Contacts' 
+                        $FindOU=$ContactRootOU
+                    } 
+                    'Users' {
+                        #$UsersRootOU='^OU=Users' 
+                        $FindOU=$UsersRootOU ; 
+                    }
+                    default{
+                        $FindOU=$UsersRootOU
+                    } ;
+                }
+                <#
+                #$FindOU = "OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
+                if($Generic){
+                    $FindOU="OU=Generic Email Accounts"
+                } elseif($Resource){
+                    $FindOU="^OU=Email Resources"
+                } else {
+                    $FindOU="OU=Users"
+                } ;
+                #>
             }
-            <#
-            #$FindOU = "OU=Email\sAccess," ;
-            if($Generic){
-                $FindOU="OU=Generic Email Accounts" # 5:18 PM 4/9/2026 confirmed DIT
-            } elseif($Resource){
-                $FindOU="OU=Resources"
-            } elseif($Shared){
-                $FindOU="OU=Generic Email Accounts"
-            } elseif($PermissionGroup){
-                $FindOU="OU=Email Access,"
-            } else {
-                $FindOU="OU=Generic Email Accounts"
-            } ;
-            # MIGHT HAVE TO TEST A SERIES, IF LF REALLY MANGLED THE PATHS ACROSS DIVISIONS!
-            #>
-        }ELSE{
-            write-verbose "resolving FindOU on root Sites" ; 
+        } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
+            # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
             switch($type){
                 'Generic' {
-                    #$SharedRootOU = "OU=Generic Email Accounts"
-                    $FindOU=$SharedRootOU
+                    $FindOU="^OU=Generic Email Accounts"
                 }
                 'Resource' {
-                    #$ResourceRootOU="^OU=Email Resources"
-                    $FindOU=$ResourceRootOU
-                }                
+                    $FindOU="^OU=Email Resources"
+                }
+                
+                'Shared' {
+                    $FindOU="OU=Generic Email Accounts"
+                }
                 'PermissionGroup' {
-                    #$PermissionGroupRootOU="OU=Email Access"
-                    $FindOU=$PermissionGroupRootOU
+                    $FindOU="OU=Email Access,"
                 } 
                  'DistributionGroup' {
-                    #$DistributionGroupRootOU='^OU=Distribution Groups' 
-                    $FindOU=$DistributionGroupRootOU
+                        $FindOU="OU=Email Access"
                 } 
                 'Contact' {
-                    #$ContactRootOU='^OU=Email Contacts' 
-                    $FindOU=$ContactRootOU
+                    $FindOU="OU=Email Access"
                 } 
-                'Users' {
-                    #$UsersRootOU='^OU=Users' 
-                    $FindOU=$UsersRootOU ; 
-                }
                 default{
-                    $FindOU=$UsersRootOU
+                    $FindOU="^OU=Users"
                 } ;
             }
             <#
-            #$FindOU = "OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
             if($Generic){
-                $FindOU="OU=Generic Email Accounts"
+                $FindOU="^OU=Generic Email Accounts"
             } elseif($Resource){
                 $FindOU="^OU=Email Resources"
             } else {
-                $FindOU="OU=Users"
-            } ;
-            #>
-        }
-    } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
-        # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
-        switch($type){
-            'Generic' {
-                $FindOU="^OU=Generic Email Accounts"
-            }
-            'Resource' {
-                $FindOU="^OU=Email Resources"
-            }
-                
-            'Shared' {
-                $FindOU="OU=Generic Email Accounts"
-            }
-            'PermissionGroup' {
-                $FindOU="OU=Email Access,"
-            } 
-             'DistributionGroup' {
-                    $FindOU="OU=Email Access"
-            } 
-            'Contact' {
-                $FindOU="OU=Email Access"
-            } 
-            default{
                 $FindOU="^OU=Users"
             } ;
-        }
-        <#
-        if($Generic){
-            $FindOU="^OU=Generic Email Accounts"
-        } elseif($Resource){
-            $FindOU="^OU=Email Resources"
+            #>
         } else {
-            $FindOU="^OU=Users"
+            throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
         } ;
-        #>
-    } else {
-        throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
-    } ;
-    $error.clear() ;
-    TRY {
-        if($SiteCode -AND -not $modelDistinguishedName){
-            write-verbose "Running -SiteCode:$($Sitecode) root-only lookup (no migrations tree resolution supported)" ; 
-            $OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | ?{ $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | select distinguishedname).distinguishedname.tostring() ;
-        }elseif($SiteCode -AND $modelDistinguishedName){
-            write-verbose "Running expanded modelDN + SiteCode:$($Sitecode) lookup (with migrations tree resolution supported)" ; 
-            if($modelDistinguishedName -match $rgxOUMigrations){
-                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,OU=_MIGRATIONS,$($DomainRoot)$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
-                #OU=Email\sAccess,.*OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,
-                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
-                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
-                # -SearchScope onelevel 
-                if($RootSrch = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=$($SiteCode),$($srchBaseMigrations)" -server $domaincontroller){
-                    write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS,"
-                    if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," }){
-                        $OuDN = $OuDN.distinguishedname.tostring() ; 
-                    }elseif($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode),OU=_MIGRATIONS," }){
-                        # some migrations OUs don't have objects below ,OU=_TTC_Sync_CMW_NoSync, check from root
-                        $OuDN = $OuDN.distinguishedname.tostring() ;                     
+
+        $smsg = @() ; 
+        if($Sitecode){$smsg += "`$Sitecode: $($Sitecode)"} ;
+        if($modelDistinguishedName){$smsg += "`$modelDistinguishedName: $($modelDistinguishedName)"} ;
+        if($Type){$smsg += "`$Type: $($Type)"} ;
+        if($Generic){$smsg += "`$Generic: $($Generic)"} ;
+        if($Resource){$smsg += "`$Resource: $($Resource)"} ;        
+        if($PermissionGroup){$smsg += "`$PermissionGroup: $($PermissionGroup)"} ;
+        if($DistributionGroup){$smsg += "`$DistributionGroup: $($DistributionGroup)"} ;
+        if($Contact){$smsg += "`$Contact: $($Contact)"} ;
+        if($Users){$smsg += "`$Users: $($Users)"} ;
+        if($domaincontroller){$smsg += "`$domaincontroller: $($domaincontroller)"} ;
+        $smsg += "`nresolved `$FindOU: $($FindOU)" ;       
+        write-verbose "==Parameters:`n$($smsg)" ;
+    } ; # BEG-E
+    PROCESS{
+        $error.clear() ;
+        TRY {
+            if($SiteCode -AND -not $modelDistinguishedName){
+                write-verbose "Running -SiteCode:$($Sitecode) root-only lookup (no migrations tree resolution supported)" ; 
+                $OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | ?{ $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | ?{($_.distinguishedname -notmatch ".*(Computers|Test),.*")} | select distinguishedname).distinguishedname.tostring() ;
+            }elseif($SiteCode -AND $modelDistinguishedName){
+                write-verbose "Running expanded modelDN + SiteCode:$($Sitecode) lookup (with migrations tree resolution supported)" ; 
+                if($modelDistinguishedName -match $rgxOUMigrations){
+                    #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,OU=_MIGRATIONS,$($DomainRoot)$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                    #OU=Email\sAccess,.*OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,
+                    #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                    #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                    # -SearchScope onelevel 
+                    if($RootSrch = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=$($SiteCode),$($srchBaseMigrations)" -server $domaincontroller){
+                        write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS,"
+                        if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," }){
+                            $OuDN = $OuDN.distinguishedname.tostring() ; 
+                            write-verbose "resolved: `$OuDN: $($OuDN)" ; 
+                        }elseif($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode),OU=_MIGRATIONS," }){
+                            # some migrations OUs don't have objects below ,OU=_TTC_Sync_CMW_NoSync, check from root
+                            $OuDN = $OuDN.distinguishedname.tostring() ;                     
+                            write-verbose "resolved: `$OuDN: $($OuDN)" ; 
+                        }else{
+                            $smsg = "UNABLE TO RESOLVE TARGET: -FINDOU:$($FindOU) in scope: OU=$($SiteCode),$($srchBaseMigrations)" ; 
+                            write-warning $smsg ; 
+                            throw $smsg ; 
+                        }
                     }else{
-                        $smsg = "UNABLE TO RESOLVE TARGET: -FINDOU:$($FindOU) in scope: OU=$($SiteCode),$($srchBaseMigrations)" ; 
+                        $smsg = "UNABLE TO RESOLVE TARGET -scope: OU=$($SiteCode),$($srchBaseMigrations)~" ; 
                         write-warning $smsg ; 
                         throw $smsg ; 
-                    }
+                    } ; 
                 }else{
-                    $smsg = "UNABLE TO RESOLVE TARGET -scope: OU=$($SiteCode),$($srchBaseMigrations)~" ; 
+                    # non-Migr, strict OU combo: 
+                    #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                    #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                    # -SearchScope onelevel 
+                    if($RootSrch = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=$($SiteCode),$($srchBaseRoot)" -server $domaincontroller){
+                        #write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU).OU=$($SiteCode),"
+                        write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU),OU=$($SiteCode),"
+                        # 1st check for target directly below the SiteOU folder
+                        #if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).OU=$($SiteCode)," }){
+                        if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU),OU=$($SiteCode)," }){
+                            $OuDN = $OuDN.distinguishedname.tostring() ; 
+                            write-verbose "resolved: `$OuDN: $($OuDN)" ; 
+                        }elseif($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode)," }){
+                            # then as fall back, in case it's been nested down a layer, support subtree search syntax
+                            $OuDN = $OuDN.distinguishedname.tostring() ; 
+                            write-verbose "resolved: `$OuDN: $($OuDN)" ; 
+                        }else{
+                            $smsg = "UNABLE TO RESOLVE TARGET: -FINDOU:$($FindOU) in scope: OU=$($SiteCode),$($srchBaseRoot)" ; 
+                            write-warning $smsg ; 
+                            throw $smsg ; 
+                        }                
+                    }else{
+                        $smsg = "UNABLE TO RESOLVE TARGET -scope: OU=$($SiteCode),$($srchBaseMigrations)~" ; 
+                        write-warning $smsg ; 
+                        throw $smsg ; 
+                    } ; 
+                }
+            } ; 
+            if($OUdn){
+                If($OUdn -isnot [string]){      # post-verification to ensure we've got a single OU spec
+                    $smsg = "AD OU SEARCH SITE:$($InputSplat.SiteCode), FindOU:$($FindOU), FAILED TO RETURN A SINGLE OU..."
+                    $smsg += "`n(may have to specify a -modelDistinguishedName, for MIGRATIONS ou SUBTREES)" ;
                     write-warning $smsg ; 
-                    throw $smsg ; 
+                    $OUdn | select distinguishedname ;
+                    write-error "$((get-date).ToString('HH:mm:ss')):EXITING!";
+                    return ;
+                } else{
+                    $OUdn | write-output  ; 
                 } ; 
             }else{
-                # non-Migr, strict OU combo: 
-                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
-                #$OUdn = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
-                # -SearchScope onelevel 
-                if($RootSrch = Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase "OU=$($SiteCode),$($srchBaseRoot)" -server $domaincontroller){
-                    write-verbose "Running SiteCode: $($SiteCode) FindOU: $($FindOU)`n^$($FindOU).OU=$($SiteCode),"
-                    # 1st check for target directly below the SiteOU folder
-                    if($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).OU=$($SiteCode)," }){
-                        $OuDN = $OuDN.distinguishedname.tostring() ; 
-                    }elseif($OuDN = $RootSrch | Where-Object { $_.distinguishedname -match "^$($FindOU).*,OU=$($SiteCode)," }){
-                        # then as fall back, in case it's been nested down a layer, support subtree search syntax
-                        $OuDN = $OuDN.distinguishedname.tostring() ; 
-                    }else{
-                        $smsg = "UNABLE TO RESOLVE TARGET: -FINDOU:$($FindOU) in scope: OU=$($SiteCode),$($srchBaseRoot)" ; 
-                        write-warning $smsg ; 
-                        throw $smsg ; 
-                    }                
-                }else{
-                    $smsg = "UNABLE TO RESOLVE TARGET -scope: OU=$($SiteCode),$($srchBaseMigrations)~" ; 
-                    write-warning $smsg ; 
-                    throw $smsg ; 
-                } ; 
-            }
-        } ; 
-        if($OUdn){
-            If($OUdn -isnot [string]){      # post-verification to ensure we've got a single OU spec
-                $smsg = "AD OU SEARCH SITE:$($InputSplat.SiteCode), FindOU:$($FindOU), FAILED TO RETURN A SINGLE OU..."
-                $smsg += "`n(may have to specify a -modelDistinguishedName, for MIGRATIONS ou SUBTREES)" ;
-                write-warning $smsg ; 
-                $OUdn | select distinguishedname ;
-                write-error "$((get-date).ToString('HH:mm:ss')):EXITING!";
-                return ;
-            } else{
-                $OUdn | write-output  ; 
-            } ; 
-        }else{
-            $false | write-output 
-        }     
-    } CATCH {
-        $ErrTrapd=$Error[0] ;
-        write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
-        $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-        write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
-    } ;
-    
+                $false | write-output 
+            }     
+        } CATCH {
+            $ErrTrapd=$Error[0] ;
+            write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+            write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+        } ;
+    } ;  # PROC-E
 }
 
 #*------^ get-SiteMbxOU.ps1 ^------
@@ -5415,8 +5439,8 @@ Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUDXztrUgmAAAlq+SEFhgYG0Hz
-# 0rygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUWbmV06gFMoBY2rnk/I+4t3p9
+# Ap6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5431,9 +5455,9 @@ Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTEJ9PR
-# 8X1ZLEC/VwvhcT10Bxt5hjANBgkqhkiG9w0BAQEFAASBgIk5QftSBeLjGmKfR0OK
-# yyn+1CnVrbBmhAnC+1svVvtiVd2ITs8hN4S3A5paaKTVozZPez7/YVUOyX8StDoL
-# NZ3gNiXq4pQloCl/yrWlnuyPiukCpL685x9JkIFodIt2yqbu1Gw5g7T8taJngDOB
-# 3qcFzNVyeDo9gH1HnZSktTq6
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRhi6O+
+# MSI9oSy/Kmp3NaWDDUbM8zANBgkqhkiG9w0BAQEFAASBgF30rARkvvyw3XvqHlHq
+# jwx4CLUORe8aGNjIHTZCsWL95lYtKad5HBHQ31EAYHDQuNZCUCOPpMb2/gA6m3wb
+# U+V2dJMKkAoEbtNizZY0JQF6l4Y2wCTDjOmA8fLGMfaORSy6m3wm9C1kjfyq5p+o
+# lxKICQWJVivVCTsNKFA3tXEI
 # SIG # End signature block

@@ -331,7 +331,6 @@ get-GCFast:Domain
 get-GCFast:Exclude
 get-GCFast:ServerPrefix
 get-GCFast:SpeedThreshold
-get-GCFast:silent
 get-GCFast:Verbose
 get-GCFast:vb
 get-GCFast:Debug
@@ -407,15 +406,8 @@ Get-RootNCTDO:ob
 Get-RootNCTDO:PipelineVariable
 Get-RootNCTDO:pv
 get-SiteMbxOU:Sitecode
-get-SiteMbxOU:modelDistinguishedName
-get-SiteMbxOU:Type
 get-SiteMbxOU:Generic
 get-SiteMbxOU:Resource
-get-SiteMbxOU:PermissionGroup
-get-SiteMbxOU:DistributionGroup
-get-SiteMbxOU:Contact
-get-SiteMbxOU:Users
-get-SiteMbxOU:domaincontroller
 get-SiteMbxOU:Verbose
 get-SiteMbxOU:vb
 get-SiteMbxOU:Debug
