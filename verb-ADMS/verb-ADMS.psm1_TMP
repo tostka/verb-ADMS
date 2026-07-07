@@ -1,11 +1,11 @@
-﻿# verb-ADMS.psm1
+﻿# verb-adms.psm1
 
 
   <#
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 6.2.0.0
+  Version     : 6.2.1.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
@@ -1479,6 +1479,7 @@ function get-ADUserViaUPN {
     Github      : https://github.com/tostka/verb-ADMS
     Tags        : Powershell, ActiveDirectory, UserPrincipalName
     REVISIONS
+    * pulled vaad dep in #reqs
     * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     * 10:57 AM 2/3/2022 init
     .DESCRIPTION
@@ -1648,10 +1649,10 @@ function get-ADUserViaUPN {
     PS> $gadu = get-ADUserViaUPN -UserPrincipalName UPN@DOMAIN.COM  ; 
     Lookup ADUser object filtering on UPN, default behaivior (without -properties specification) is to return all properties of the located object.  
     .LINK
-    https://github.com/tostka/verb-AAD
+    https://github.com/tostka/verb-adms
     #>
     #Requires -Version 3
-    #Requires -Modules verb-AAD, ActiveDirectory
+    #Requires -Modules ActiveDirectory
     ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
@@ -3947,6 +3948,315 @@ function grant-ADGroupManagerUpdateMembership {
 #*------^ grant-ADGroupManagerUpdateMembership.ps1 ^------
 
 
+#*------v import-ModuleActiveDirectoryUnderPowershellCore.ps1 v------
+function import-ModuleActiveDirectoryUnderPowershellCore {
+    <#
+    .SYNOPSIS
+    import-ModuleActiveDirectoryUnderPowershellCore() - Works around Powershell7/PowershellCore limitation - ActiveDirectory module is .net-based and incompatible with PSc. Loads background session in windowspowershell, and imports that session into the ps7 session, to expose AD cmdlets. 
+    .NOTES
+    Version     : 1.0.1
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-03
+    FileName    : 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-ADMS
+    Tags        : Powershell,ActiveDirectory
+    REVISIONS
+    * 10:44 AM 6/29/2026 initial vers
+    .DESCRIPTION
+    import-ModuleActiveDirectoryUnderPowershellCore() - Works around Powershell7/PowershellCore limitation - ActiveDirectory module is .net-based and incompatible with PSc. Loads background session in windowspowershell, and imports that session into the ps7 session, to expose AD cmdlets. 
+    
+    Issue: Both Import-Module ActiveDirectory -UseWindowsPowerShell and the below...
+    ```powershell
+    PS> $s = New-PSSession -UseWindowsPowerShell ; 
+    PS> Import-Module ActiveDirectory -PSSession $s ; 
+    
+        cmdlet Measure-Object at command pipeline position 2
+        Supply values for the following parameters:
+        Property:
+    ```
+    generate the above supply values ... prompt, and Fail, if you specify an arbitrary value at the prompt, like '*'
+
+     Testing has revealed solely this variant that works for this critical hybrid user mgmt module:
+    ```powershell
+    PS> Invoke-Command $s { powershell -NoProfile -Command "Import-Module ActiveDirectory" } ; 
+    PS> Import-Module ActiveDirectory -PSSession $s ; 
+    PS> get-aduser LOGON ; 
+ 
+    ```
+    
+    Copilot reports the following root cause, and options that 'should' work (not in my testing)
+
+    #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    This is a **known (and very annoying) PowerShell 7 + WinPS compatibility bug**, not something you're doing wrong.
+
+    What you're seeing:
+
+    ```
+    cmdlet Measure-Object at command pipeline position 2
+    Supply values for the following parameters:
+    Property:
+    ```
+
+    followed by:
+
+    ```
+    Failed to generate proxies for remote module 'ActiveDirectory'.
+    Data returned by the remote Get-Command command is not in the expected format.
+    ```
+
+    means:
+
+    ? The **WinPS compatibility layer is breaking during proxy generation**  
+    ? It's mis-parsing output from the remote session  
+    ? `Measure-Object` is being invoked incorrectly with a missing `-Property`
+
+    * * *
+
+    # ? Root Cause (what's actually broken)
+
+    This happens when **something in the Windows PowerShell session is interfering with `Get-Command` output**, typically:
+
+    ### ?? Most common triggers
+
+    1.  **A profile script in Windows PowerShell (5.1)**
+        
+        -   Especially anything modifying pipeline behavior
+        -   e.g. aliases, functions, formatting, or wrappers around core cmdlets
+    2.  **A redefined or shadowed `Measure-Object`**
+        
+        -   Function or alias overriding the built-in cmdlet
+    3.  **Custom type/format data**
+        
+        -   `.ps1xml` changes that break object serialization
+    4.  **Third-party modules auto-loading in WinPS**
+        
+        -   These can silently corrupt the pipeline output
+
+    * * *
+
+    # ? Why it breaks _this specific import_
+
+    Internally, PS7 does something like:
+
+    PowerShell
+
+    Invoke-Command -Session $s { Get-Command -Module ActiveDirectory } | Measure-Object
+
+    ```
+
+    If **anything modifies `Measure-Object` behavior**, it triggers:
+
+    ```
+    Supply values for the following parameters: Property
+    ```
+
+    ? which completely breaks proxy generation
+
+    * * *
+
+    # ? The Fix (cleanest and most reliable)
+
+    ## ? Option 1 — Start a clean WinPS session (NO profile)
+
+    PowerShell
+
+    $s = New-PSSession -UseWindowsPowerShell -ConfigurationName Microsoft.PowerShell
+
+    Then:
+
+    PowerShell
+
+    Invoke-Command $s { powershell -NoProfile -Command "Import-Module ActiveDirectory" }
+
+    Import-Module ActiveDirectory -PSSession $s
+
+    * * *
+
+    ## ? Option 2 — Disable profile loading globally (BEST FIX)
+
+    Check your WinPS profile:
+
+    PowerShell
+
+    notepad $PROFILE
+
+    Also check **all scopes**:
+
+    PowerShell
+
+    $PROFILE | Format-List \*
+
+    Then temporarily test:
+
+    PowerShell
+
+    powershell.exe -NoProfile
+
+    Inside that session:
+
+    PowerShell
+
+    Import-Module ActiveDirectory
+
+    Get-Command Get-ADUser
+
+    ? If this works ? your profile is the problem
+
+    * * *
+
+    ## ? Option 3 — Detect a broken Measure-Object
+
+    In **Windows PowerShell (5.1)** run:
+
+    PowerShell
+
+    Get-Command Measure-Object
+
+    Expected:
+
+    ```
+    Cmdlet Measure-Object
+    ```
+
+    If you see:
+
+    -   `Function`
+    -   `Alias`
+
+    ? That's your issue
+
+    * * *
+
+    ### Fix it:
+
+    PowerShell
+
+    Remove-Item function:Measure-Object -ErrorAction SilentlyContinue
+
+    Remove-Item alias:Measure-Object -ErrorAction SilentlyContinue
+
+    ```
+
+    * * *
+
+    ## ? Option 4 — Force clean import (recommended workaround)
+
+    This often bypasses the bug:
+
+    PowerShell
+
+    $s = New-PSSession -UseWindowsPowerShell
+
+    Invoke-Command $s {
+
+    Remove-Item function:Measure-Object -ErrorAction SilentlyContinue
+
+    Import-Module ActiveDirectory
+
+    }
+
+    Import-Module ActiveDirectory -PSSession $s -DisableNameChecking
+
+    * * *
+
+    # ? Quick diagnostic (do this first)
+
+    Run this in PS7:
+
+    PowerShell
+
+    Invoke-Command -Session $s { Get-Command Measure-Object }
+
+    If it DOESN'T return:
+
+    ```
+    Cmdlet Measure-Object
+    ```
+
+    ? you've confirmed the root cause
+
+    * * *
+
+    # ? Nuclear but effective fix
+
+    If this is a server with lots of legacy scripts:
+
+    PowerShell
+
+    rename-item $HOME\\Documents\\WindowsPowerShell\\profile.ps1 profile.ps1.bak
+
+    ```
+
+    Then retry your import.
+
+    * * *
+
+    # ? Alternative (if you just need it working)
+
+    Honestly, for stability:
+
+    ?? Run AD commands in **Windows PowerShell 5.1 directly**
+
+    PowerShell
+
+    powershell.exe
+
+    Import-Module ActiveDirectory
+
+    This avoids:
+
+    -   proxy generation bugs
+    -   serialization issues
+    -   compatibility headaches
+
+    * * *
+
+    # ? Bottom line
+
+    Your issue is **NOT:**
+
+    -   module path
+    -   permissions
+    -   remoting config
+
+    ? It **IS:**
+
+    A corrupted WinPS command pipeline (almost always `Measure-Object` or profile interference)
+
+    * * *
+    #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    
+    .OUTPUT
+    None
+    .EXAMPLE
+    $OU=import-ModuleActiveDirectoryUnderPowershellCore -Sitecode SITE -Generic
+    Retrieve the DN OU path for the specified SITE OU's Email-related Generic Mbx sub-OU    
+    .LINK
+    https://github.com/tostka/verb-ADMS
+    #>
+    [CmdletBinding()]
+    #[Alias('xxx')]
+    PARAM (        
+    ) ;  # PARAM-E    
+    TRY{
+        Invoke-Command $s { powershell -NoProfile -Command "Import-Module ActiveDirectory -ErrorAction STOP" } ; 
+        Import-Module ActiveDirectory -PSSession $s -ErrorAction STOP; 
+        $TRUE | write-output ; 
+    } CATCH {$ErrTrapd=$Error[0] ;
+        write-host -foregroundcolor gray  "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+        $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+        write-warning  "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+        $false | write-output  ;         
+    } ;
+}
+
+#*------^ import-ModuleActiveDirectoryUnderPowershellCore.ps1 ^------
+
+
 #*------v load-ADMS.ps1 v------
 function load-ADMS {
     <#
@@ -4445,406 +4755,6 @@ Function Sync-AD {
 }
 
 #*------^ Sync-AD.ps1 ^------
-
-
-#*------v test-AADUserSync.ps1 v------
-function test-AADUserSync {
-    <#
-    .SYNOPSIS
-    test-AADUserSync - Check AD->AzureAD user sync status 
-    .NOTES
-    Version     : 1.0.0
-    Author      : Todd Kadrie
-    Website     :	http://www.toddomation.com
-    Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 2020-
-    FileName    : 
-    License     : MIT License
-    Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka/verb-XXX
-    Tags        : Powershell
-    AddedCredit : REFERENCE
-    AddedWebsite:	URL
-    AddedTwitter:	URL
-    REVISIONS
-    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
-    * 12:16 PM 2/3/2022 requires block was triggering nesting error, so stripped back from abso minimum
-    * 3:37 PM 1/28/2022 fixed error, due to un-instantiated $rpt (needed to be an explicit array, forgot to declare at top). 
-    * 3:00 PM 1/26/2022 init
-    .DESCRIPTION
-    test-AADUserSync - Check AD->AzureAD user sync status 
-
-    -outputObject param returns a summary psobject to the pipeline:
-    MSOLimmutableid : UC7OxxxxxxxxxxxxxxxR6g==
-    MSOLguid        : 8cce2xxxxxxxxxxxxxxxxxxxxxxxxad391ea
-    ADimmutableId   : UC7OxxxxxxxxxxxxxxxR6g==
-    ADguid          : 8cce2xxxxxxxxxxxxxxxxxxxxxxxxad391ea
-    isAADUserSynced    : True
-
-    otherwise a boolean is returned, corresponding to the isAADUserSynced value
-
-    .PARAMETER UserPrincipalName
-    UserPrincipalName [-UserPrincipalName xxx@toro.com]
-    .PARAMETER showDebug
-    Debugging Flag [-showDebug]
-    .PARAMETER UserPrincipalName
-    UserPrincipalName [-UserPrincipalName xxx@toro.com]
-    .PARAMETER outputObject
-    Object output switch [-outputObject]
-    .EXAMPLE
-    PS> test-AADUserSync -UserPrincipalName UPN@DOMAIN.COM ; 
-    Lookup AzureAD Licensing on UPN
-    .EXAMPLE
-    PS> $results = test-AADUserSync -UserPrincipalName UPN@DOMAIN.COM -outputObject ; 
-        if($results.AADUserSynced){ 
-            write-host -foregroundcolor green "ADUser:$($UPN) is AAD synced" 
-        } else {
-            write-warning "ADUser:$($UPN) is *NOT* AAD synced" 
-        } ; 
-    Example returning an object and testing post-status on object
-    .EXAMPLE
-    PS> if(test-AADUserSync -UserPrincipalName (get-exomailbox USER@DOMAIN.COM).userprincipalname{ 
-        write-host -foregroundcolor green "ADUser:$($UPN) is AAD synced" 
-        } else {
-            write-warning "ADUser:$($UPN) is *NOT* AAD synced" 
-        } ; 
-    Lookup AzureAD Licensing on UPN, leveraging EXO mbx lookup to resolve, and test returned boolean
-    .EXAMPLE
-    PS> test-AADUserSync -UserPrincipalName USER@DOMAIN.COM 
-    Single user test
-    .EXAMPLE
-    PS> $mdtable = @"
-|Users|User_Name|Failed_assignements|Top_reasons_for_failure|
-|---|---|---|---|
-|FName LName|UPN@DOMAIN.com|1/1| Non-unique proxy address in Exchange Online|
-|FName LName|email@DOMAIN.com|1/1| Non-unique proxy address in Exchange Online|
-"@ ; 
-    $users = $mdtable | convertfrom-markdowntable  ; 
-    $results = test-AADUserSync -UserPrincipalName $users.user_name -outputObject -verbose ;
-    $results | %{write-host "`n===" ; $_ } ; 
-    Markdown table fed array test, with delimited output 
-    .LINK
-    https://github.com/tostka/verb-AAD
-    #>
-    #Requires -Version 3
-    #Requires -Modules MSOnline, verb-AAD, ActiveDirectory
-    ##Requires -RunasAdministrator
-    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
-    ## [OutputType('bool')] # optional specified output type
-
-
-    [CmdletBinding()]
-    ###[Alias('Alias','Alias2')]
-    PARAM(
-        [Parameter(Position=1,Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="UserPrincipalName [-UserPrincipalName xxx@toro.com]")][Alias('UPN')]
-        $UserPrincipalName,
-        [Parameter(HelpMessage="Debugging Flag [-showDebug]")]
-        [switch] $showDebug,
-        [Parameter(HelpMessage="Object output switch [-outputObject]")]
-        [switch] $outputObject
-    ) # PARAM BLOCK END
-
-    BEGIN { 
-        $rgxEmployeeNumberProper = '^([0-9]{3,8})$' # 3-8 digit integer
-        $rgxEmployeeNumberSamAcct = '^([A-Za-z0-9]{6,7})$' # 6-7 digit alphanum, likely is a samacctname in Employeenumber
-        $rgxEmployeeNumberSamAcctSpaces = '^[\sA-Za-z0-9]{6,7}$' # 6-7 digit alphanum w spaces -> likely is a samacctname in Employeenumber w leading/trailing \s (trim it)
-        
-        if ($PSCmdlet.MyInvocation.ExpectingInput) {
-            $smsg = "Data received from pipeline input: '$($InputObject)'" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        } else {
-            #$smsg = "Data received from parameter input: '$($InputObject)'" ; 
-            $smsg = "(non-pipeline - param - input)" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        } ; 
-
-    } ;  # BEGIN-E
-    PROCESS {
-        $Error.Clear() ; 
-        # call func with $PSBoundParameters and an extra (includes Verbose)
-        #call-somefunc @PSBoundParameters -anotherParam
-    
-        # - Pipeline support will iterate the entire PROCESS{} BLOCK, with the bound - $array - 
-        #   param, iterated as $array=[pipe element n] through the entire inbound stack. 
-        # $_ within PROCESS{}  is also the pipeline element (though it's safer to declare and foreach a bound $array param).
-    
-        # - foreach() below alternatively handles _named parameter_ calls: -array $objectArray
-        # which, when a pipeline input is in use, means the foreach only iterates *once* per 
-        #   Process{} iteration (as process only brings in a single element of the pipe per pass) 
-        
-        [array]$Rpt = @() ; 
-        $1stConn = $true ; 
-        foreach($UPN in $UserPrincipalName) {
-            # dosomething w $item
-        
-            # put your real processing in here, and assume everything that needs to happen per loop pass is within this section.
-            # that way every pipeline or named variable param item passed will be processed through. 
-
-            # if these are driven by ADConnect fails, it's almost guaranteed that the referred UPN exists in o365. But it may not onprem.
-
-            if(gcm -name connect-msol){
-                $sBnr="#*======v UPN: $($UPN): v======" ;
-                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`n$($sBnr)" ;
-                $hReports = [ordered]@{} ; 
-                $Error.Clear() ; 
-                Try {
-                    if($showDebug){write-host  "$((get-date).ToString("HH:mm:ss")):connect-msol"; } ;
-                    if($1stConn) { connect-msol ; $1stConn = $false }
-                    else {connect-msol -silent} ; 
-                    $pltgmu=[ordered]@{UserPrincipalName=$UPN  ;ErrorAction= 'STOP' } ;
-                    $smsg = "get-msoluser w`n$(($pltgmu|out-string).trim())" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $msolu = $null ; 
-                    $msolu = get-msoluser @pltgmu ; 
-                    #$MSOLimmutableid=$null ; 
-                    #$MSOLimmutableid=$msolu.ImmutableId ;
-                    $MSOLguid=New-Object -TypeName guid (,[System.Convert]::FromBase64String($msolu.ImmutableId)) ;
-                    $smsg = "(adding `$hReports.MSOLimmutableid, `$hReports.MSOLguid, and `$hReports.MSOLDname)" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    $hReports.add('MSOLimmutableid',$msolu.ImmutableId) ; 
-                    $hReports.add('MSOLguid',$MSOLguid) ; 
-                    $hReports.add('MSOLDname',$msolu.displayname) ; 
-
-                } Catch {
-                    Write-warning "Failed to exec cmd because: $($Error[0])" ;
-                    Break ; 
-                }  ;
-        
-                #$Error.Clear() ; 
-                #Try {
-                    $ADguid=$null ; 
-                    # AD abberant -filter syntax: Get-ADUser -Filter 'sAMAccountName -eq $SamAc'
-                    $filter = "userprincipalname -eq '$($UPN)'" ;
-                    $pltGADU=[ordered]@{filter= $filter ;Properties = 'DisplayName' ; ErrorAction= 'STOP' } ; 
-                    $smsg = "get-aduser w`n$(($pltGADU|out-string).trim())" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $ADUser = $null ; 
-                    Try {
-                        $ADUser = get-aduser @pltGADU ; 
-                        # if it won't trigger test & throw 
-                        if($AdUser){
-                            $smsg = "(get-aduser matched:$($aduser.userprincipalname))" ; 
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                        } else { 
-                            $smsg = "(get-aduser FAILED to match -filter:$($pltGADU.filter))" ; 
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                            #throw $smsg  ; 
-                            # try to throw a stock ad not-found error (emulate it)
-                            throw [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] "$($smsg)"
-                        } ; 
-                    # doesn't work natively -filter doesn't generate a catchable error, even with -ea STOP, this block never triggers
-                    } Catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
-                        # Do stuff if not found
-                        $smsg = "No GET-ADUSER match found for -filter:$($filter)" ; 
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;      
-                        # triage the UPN provided, trim to pre-strip leading/trailing \s's
-                        $potEmployeeNumber,$UPNDomain = $UPN.split('@').trim() ;   
-                        switch -Regex ($potEmployeeNumber){
-                            $rgxEmployeeNumberProper {
-                                # '^([0-9]{3,8})$' # 3-8 digit integer# 3-8 digit integer
-                                $filter = "employeenumber -eq '$($potEmployeeNumber)'" ;
-                                $pltGADU=[ordered]@{filter= $filter ;Properties = 'DisplayName' ; ErrorAction= 'STOP' } ; 
-                                #$pltGADU=[ordered]@{filter= "'employeenumber -eq $($potEmployeeNumber)'" ;Properties = 'DisplayName' ; ErrorAction= 'STOP' } ; 
-                                $smsg = "get-aduser w`n$(($pltGADU|out-string).trim())" ; 
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                $ADUser = $null ; 
-                                Try {
-                                    $ADUser = get-aduser @pltGADU ; 
-                                    # if it won't trigger test & throw 
-                                    if($AdUser){
-                                        $smsg = "(get-aduser matched:$($aduser.userprincipalname))" ; 
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                                    } else { 
-                                        $smsg = "(get-aduser FAILED to match -filter:$($pltGADU.filter))" ; 
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                                        throw $smsg  ; 
-                                    } ; 
-                                } Catch {
-                                   $smsg = "$(pltGADU.filter) *not* found";
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                    throw $smsg 
-                                    continue ; 
-                                };
-                            }
-                            $rgxEmployeeNumberSamAcct {
-                                # '^([A-Za-z0-9]{7,6})$' # 6-7 digit alphanum, likely is a samacctname in Employeenumber
-                                $filter = "samaccountname -eq '$($potEmployeeNumber)'" ;
-                                $pltGADU=[ordered]@{filter= $filter ;Properties = 'DisplayName' ; ErrorAction= 'STOP' } ; 
-                                #$pltGADU=[ordered]@{filter= "'samaccountname -eq $($potEmployeeNumber)'" ;Properties = 'DisplayName' ; ErrorAction= 'STOP' } ; 
-                                $smsg = "get-aduser w`n$(($pltGADU|out-string).trim())" ; 
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                $ADUser = $null ; 
-                                Try {
-                                    $ADUser = get-aduser @pltGADU ; 
-                                    # if it won't trigger test & throw 
-                                    if($AdUser){
-                                        $smsg = "(get-aduser matched:$($aduser.userprincipalname))" ; 
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                                    } else { 
-                                        $smsg = "(get-aduser FAILED to match -filter:$($pltGADU.filter))" ; 
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                                        throw $smsg  ; 
-                                    } ; 
-                                } Catch {
-                                   $smsg = "$(pltGADU.filter) *not* found";
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                    throw $smsg 
-                                    continue ; 
-                                };
-                            }
-                            $rgxEmployeeNumberSamAcctSpaces {
-                                # '^[\sA-Za-z0-9]{7,6}$' # 6-7 digit alphanum w spaces -> likely is a samacctname in Employeenumber w leading/trailing \s (trim it)
-                                # shouldn't get here (stip ??? ) but leave it defined.
-                                $potEmployeeNumber = $potEmployeeNumber.trim() ; # retrim, see if it will clear
-                                $filter = "samaccountname -eq '$($potEmployeeNumber)'" ;
-                                $pltGADU=[ordered]@{filter= $filter ;Properties = 'DisplayName' ; ErrorAction= 'STOP' } ; 
-                                #$pltGADU=[ordered]@{filter= "'samaccountname -eq $($potEmployeeNumber)'" ;Properties = 'DisplayName' ; ErrorAction= 'STOP' } ; 
-                                $smsg = "get-aduser w`n$(($pltGADU|out-string).trim())" ; 
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                $ADUser = $null ; 
-                                Try {
-                                    $ADUser = get-aduser @pltGADU ; 
-                                    # if it won't trigger test & throw 
-                                    if($AdUser){
-                                        $smsg = "(get-aduser matched:$($aduser.userprincipalname))" ; 
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                                    } else { 
-                                        $smsg = "(get-aduser FAILED to match -filter:$($pltGADU.filter))" ; 
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                                        throw $smsg  ; 
-                                    } ; 
-                                }  Catch {
-                                   $smsg = "$(pltGADU.filter) *not* found";
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                    throw $smsg 
-                                    continue ; 
-                                };
-
-                            } 
-                            default {
-                                $smsg = "Unrecognized EmployeeNumber scheme!" ; 
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level warn } #Error|Warn|Debug 
-                                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                                throw $smsg 
-                                continue; 
-                            } 
-                        } ; # Switch-E
-                        
-                    #} ;                       
-                    <#} Catch {
-                        $smsg = "Failed to exec cmd because: $($Error[0])" ;
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                        Break ; 
-                    }  ;
-                    #>
-                    # reworking extended vers of above
-                    } CATCH {
-                        $ErrTrapd=$Error[0] ;
-                        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        #-=-record a STATUSWARN=-=-=-=-=-=-=
-                        $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-                        if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
-                        if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
-                        #-=-=-=-=-=-=-=-=
-                        $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ; 
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
-                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
-                    } ; 
-                    #
-
-                    $ADguid=[guid]$ADUser.objectguid ;
-                    $ADimmutableId = [System.Convert]::ToBase64String($ADguid.ToByteArray()) ;
-                    $smsg = "(adding `$hReports.ADimmutableId, `$hReports.ADguid, and `$hReports.ADDname)" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    $hReports.add('ADimmutableId',$ADimmutableId) ; 
-                    $hReports.add('ADguid',$ADguid) ; 
-                    $hReports.add('ADDname',$ADUser.displayname) ; 
-                <#} Catch {
-                    $smsg = "Failed to exec cmd because: $($Error[0])" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    Break ; 
-                }  ;
-                #>
-        
-                if(($msolu.ImmutableId -eq $ADimmutableId) -AND ($ADguid.guid -eq $MSOLguid.guid)){
-                    #write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):`n===$($tUPN) AD->AAD sync is INTACT:`n`n`$msolu.ImmutableId:`t$($msolu.ImmutableId) `nMATCHES converted `n`$ADimmutableId:`t`t$($ADimmutableId)`n`nAND `$ADguid.guid:`t$($ADguid.guid) `nMATCHES converted `n`$MSOLguid.guid:`t`t$($MSOLguid.guid)`n" ; 
-                    $smsg = "`n$((get-date).ToString('HH:mm:ss')):`n===$($tUPN) AD->AAD sync is INTACT:"
-                    $smsg += "`n`n`$msolu.ImmutableId:`t$($msolu.ImmutableId) `nMATCHES converted `n`$ADimmutableId:`t`t$($ADimmutableId)"
-                    $smsg += "`n`nAND `$ADguid.guid:`t$($ADguid.guid) `nMATCHES converted `n`$MSOLguid.guid:`t`t$($MSOLguid.guid)`n" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $smsg = "(adding `$hReports.isAADUserSynced:`$true)" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    $hReports.add('isAADUserSynced',$true) ; 
-                } else {
-                    #write-host -foregroundcolor red "`n$((get-date).ToString('HH:mm:ss')):`n===$(tUPN) AD->AAD sync is BROKEN:`n`n`$msolu.ImmutableId:`t($($msolu.ImmutableId)) `nDOES NOT MATCH converted `n`$ADimmutableId:`t`t($($ADimmutableId))`n`nAND `$ADguid.guid:`t($($ADguid.guid)) `nDOES NOT MATCH converted `n`$MSOLguid.guid:`t`t($($MSOLguid.guid))`n" ; 
-                    $smsg = "`n$((get-date).ToString('HH:mm:ss')):`n===$(tUPN) AD->AAD sync is BROKEN:" ; 
-                    $smsg += "`n`n`$msolu.ImmutableId:`t($($msolu.ImmutableId)) `nDOES NOT MATCH converted `n`$ADimmutableId:`t`t($($ADimmutableId))" ; 
-                    $smsg += "`n`nAND `$ADguid.guid:`t($($ADguid.guid)) `nDOES NOT MATCH converted `n`$MSOLguid.guid:`t`t($($MSOLguid.guid))`n" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $smsg = "(adding `$hReports.isAADUserSynced:`$false)" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    $hReports.add('isAADUserSynced',$false) ; 
-                } ; 
-        
-                write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):`n$($sBnr.replace('=v','=^').replace('v=','^='))`n" ;
-        
-            } else {
-                write-warning "Current profile lacks underlying connect-msol()" ; 
-            } ; 
-            
-            # convert the hashtable to object for output to pipeline
-            $Rpt += New-Object PSObject -Property $hReports ;
-            
-        
-        } ; # loop-E
-
-    } ;  # PROC-E
-    END {
-        if($outputObject){
-            $smsg = "(Returning summary object to pipeline)" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;  
-            $Rpt | Write-Output ; 
-        } else {
-            $smsg = "(Returning isAADUserSyncd boolean to pipeline)" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;  
-            $Rpt.isAADUserSynced | write-output ; 
-        }  
-    } ;  # END-E
-}
-
-#*------^ test-AADUserSync.ps1 ^------
 
 
 #*------v test-ADComputerName.ps1 v------
@@ -5431,7 +5341,7 @@ Function test-Password{
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserDetailsTDO,get-ADUserViaUPN,Get-ComputerADSiteName,Get-ComputerADSiteSummary,get-CredentialsTDO,get-DCLocal,Get-ForestRootNCTDO,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,Get-RootNCTDO,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-AADUserSync,test-ADComputerName,test-ADUserEmployeeNumber,test-CredentialsTDO,test-isADComputerName,unmount-ADForestDrives,test-Password -Alias *
+Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get-ADForestDrives,Get-AdminInitials,get-ADRootSiteOUs,Get-ADSIComputerByGuid,Get-ADSIObjectByGuid,get-ADSiteLocal,get-ADUserDetailsTDO,get-ADUserViaUPN,Get-ComputerADSiteName,Get-ComputerADSiteSummary,get-CredentialsTDO,get-DCLocal,Get-ForestRootNCTDO,get-GCFast,get-GCFastXO,check-ReqMods,get-GCLocal,Get-RootNCTDO,get-SiteMbxOU,grant-ADGroupManagerUpdateMembership,import-ModuleActiveDirectoryUnderPowershellCore,load-ADMS,mount-ADForestDrives,resolve-ADRightsGuid,Sync-AD,test-ADComputerName,test-ADUserEmployeeNumber,test-CredentialsTDO,test-isADComputerName,unmount-ADForestDrives,test-Password -Alias *
 
 
 

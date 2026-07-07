@@ -12,7 +12,7 @@
 RootModule = 'verb-ADMS.psm1'
 
 # Version number of this module.
-ModuleVersion = '6.2.0'
+ModuleVersion = '6.2.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'ActiveDirectory PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Convert-ADSIDomainFqdnToNBName','find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','Get-ADSIComputerByGuid','Get-ADSIObjectByGuid','get-ADSiteLocal','get-ADUserDetailsTDO','get-ADUserViaUPN','Get-ComputerADSiteName','Get-ComputerADSiteSummary','get-CredentialsTDO','get-DCLocal','Get-ForestRootNCTDO','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','Get-RootNCTDO','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','test-AADUserSync','test-ADComputerName','test-ADUserEmployeeNumber','test-CredentialsTDO','test-isADComputerName','unmount-ADForestDrives','test-Password')
+FunctionsToExport = @('Convert-ADSIDomainFqdnToNBName','find-SiteRoleOU','get-ADForestDrives','Get-AdminInitials','get-ADRootSiteOUs','Get-ADSIComputerByGuid','Get-ADSIObjectByGuid','get-ADSiteLocal','get-ADUserDetailsTDO','get-ADUserViaUPN','Get-ComputerADSiteName','Get-ComputerADSiteSummary','get-CredentialsTDO','get-DCLocal','Get-ForestRootNCTDO','get-GCFast','get-GCFastXO','check-ReqMods','get-GCLocal','Get-RootNCTDO','get-SiteMbxOU','grant-ADGroupManagerUpdateMembership','import-ModuleActiveDirectoryUnderPowershellCore','load-ADMS','mount-ADForestDrives','resolve-ADRightsGuid','Sync-AD','test-ADComputerName','test-ADUserEmployeeNumber','test-CredentialsTDO','test-isADComputerName','unmount-ADForestDrives','test-Password')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUDoBkVMewC4wTLXFxA1MHxWKM
-# DregggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU0YaI4O7KF3m/fMFLBTH3kcIn
+# rcSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSFEdod
-# +2xALpIhC8+PIAAsZ1VUaTANBgkqhkiG9w0BAQEFAASBgHU95a4fJBCwO9UiEtYb
-# yESMta8cSmIS+297e1qROlO/Zqy7a+VWFuXH6jyuwiplsPaM/3HkK3P4m1TUmNHO
-# DBMspbxoXYI87VssOKtihKwz/5yDAsuCjkGyukayts3X2ie72C4c7kuFD78EsghK
-# 29aJ3rg9PhJXVZZw8E+o742s
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS8Dn2t
+# l+4acnDyojFV3QuCbo0+rTANBgkqhkiG9w0BAQEFAASBgF0T1smAuaS18VlBz4GE
+# XU/Ahi8VtQJcM+ol0QQOaLb8ISe2HGBDo7ShsWX+rFF0kwLmE4VeqD9TBIdEAUVj
+# ngsgtCyNl+8iF39/JHdgtbzB8b/O/7qAwFnTsXLZGdpLP2WWsdG+xYlT9Fb5URuE
+# /4dzZmcDjCd86cl6xWe7VN81
 # SIG # End signature block
