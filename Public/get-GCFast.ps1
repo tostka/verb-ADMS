@@ -1,4 +1,6 @@
-﻿#*----------------v Function get-GCFast v----------------
+﻿# get-GCFast.ps1
+
+#endregion GET_GCFAST ; #*------^ END get-GCFast ^------
 function get-GCFast {
     <#
     .SYNOPSIS
@@ -19,6 +21,7 @@ function get-GCFast {
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     AddedTwitter: URL
     REVISIONS   :
+    * 8:08 AM 7/31/2026 updated region brackets
     * 2:53 PM 4/10/2026 add: -silent
     * 2:39 PM 1/23/2025 added -exclude (exclude array of dcs by name), -ServerPrefix (exclude on leading prefix of name) params, added expanded try/catch, swapped out w-h etc for wlt calls
     * 3:38 PM 3/7/2024 SPB Site:Spellbrook no longer has *any* GCs: coded in a workaround and discvoer domain-wide filtering for CN=EDC.* gcs (as spb servers use EDCMS8100 AS LOGONDC)
@@ -52,12 +55,12 @@ function get-GCFast {
     .EXAMPLE
     PS> get-gcfast -domain dom.for.domain.com
     Lookup a Global domain gc, default to Site lookup from local server's perspective
-    .EXAMPLE    
+    .EXAMPLE
     PS> if($domaincontroller = get-gcfast -Exclude ServerBad -Verbose){
     PS>     write-warning "Changing DomainControler: Waiting 20seconds, for RelSync..." ;
     PS>     start-sleep -Seconds 20 ;
-    PS> } ; 
-    Demo acquireing a new DC, excluding a caught bad DC, and waiting before moving on, to permit ADRerplication from prior dc to attempt to ensure full sync of changes. 
+    PS> } ;
+    Demo acquireing a new DC, excluding a caught bad DC, and waiting before moving on, to permit ADRerplication from prior dc to attempt to ensure full sync of changes.
     PS> get-gcfast -ServerPrefix ABC -verbose
     Demo use of -ServerPrefix to only return DCs with servernames that begin with the string 'ABC'
     .EXAMPLE
@@ -71,21 +74,21 @@ function get-GCFast {
     PS>         if ($_.Exception.Message -like "*ResourceUnavailable*") {
     PS>             $ErrorTrapped=$Error[0] ;
     PS>             $smsg = "Failed to exec cmd because: $($ErrorTrapped.Exception.Message )" ;
-    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-    PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+    PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
     PS>             # re-quire a new DC
-    PS>             $badDC = $domaincontroller ; 
-    PS>             $smsg = "PROBLEM CONTACTING $(domaincontroller)!:Resource unavailable: $($ErrorTrapped.Exception.Message)" ; 
-    PS>             $smsg += "get-GCFast() an alterate DC" ; 
-    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-    PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>             $badDC = $domaincontroller ;
+    PS>             $smsg = "PROBLEM CONTACTING $(domaincontroller)!:Resource unavailable: $($ErrorTrapped.Exception.Message)" ;
+    PS>             $smsg += "get-GCFast() an alterate DC" ;
+    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+    PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
     PS>             if($domaincontroller = get-gcfast -Exclude $$badDC -Verbose){
     PS>                 write-warning "Changing DomainController:($($badDC)->$($domaincontroller)):Waiting 20seconds, for ReplSync..." ;
     PS>                 start-sleep -Seconds 20 ;
-    PS>             } ;                             
+    PS>             } ;
     PS>         }else {
     PS>             throw $Error[0] ;
-    PS>         } ; 
+    PS>         } ;
     PS>     } CATCH {
     PS>         $ErrorTrapped=$Error[0] ;
     PS>         Start-Sleep -Seconds $RetrySleep ;
@@ -102,7 +105,7 @@ function get-GCFast {
     PS>         Continue ;
     PS>     }  ;
     PS> } Until ($Exit -eq $DoRetries) ;
-    Retry demo that includes aquisition of a new DC, excluding a caught bad DC, and waiting before moving on, to permit ADRerplication from prior dc to attempt to ensure full sync of changes. 
+    Retry demo that includes aquisition of a new DC, excluding a caught bad DC, and waiting before moving on, to permit ADRerplication from prior dc to attempt to ensure full sync of changes.
     .LINK
     https://github.com/tostka/verb-adms
     #>
@@ -125,35 +128,35 @@ function get-GCFast {
     $SpeedThreshold = 100 ;
     $rgxSpbDCRgx = 'CN=EDCMS'
     $ErrorActionPreference = 'SilentlyContinue' ; # Set so we don't see errors for the connectivity test
-    $env:ADPS_LoadDefaultDrive = 0 ; 
-    $sName = "ActiveDirectory"; 
+    $env:ADPS_LoadDefaultDrive = 0 ;
+    $sName = "ActiveDirectory";
     TRY{
         if ( -not(Get-Module | Where-Object { $_.Name -eq $sName }) ) {
-            $smsg = "Adding ActiveDirectory Module (`$script:ADPSS)" ; 
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-            $script:AdPSS = Import-Module $sName -PassThru -ea Stop ;
+            $smsg = "Adding ActiveDirectory Module (`$script:ADPSS)" ;
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            $script:AdPSS = Import-Module $sName -force -PassThru -ea Stop ;
         } ;
         if (-not $Domain) {
             $Domain = (get-addomain -ea Stop).DNSRoot ; # use local domain
             $smsg = "Defaulting domain: $Domain";
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
         }
     } CATCH {
         $ErrTrapd=$Error[0] ;
         $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    } ; 
-    
+    } ;
+
     # Get all the local domain controllers
     if ((-not $Site)) {
         # if no site, look the computer's Site Up in AD
         TRY{
             $Site = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
             $smsg = "Using local machine Site: $($Site)";
-            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
         } CATCH {
@@ -161,7 +164,7 @@ function get-GCFast {
             $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        } ; 
+        } ;
     } ;
 
     # gc filter
@@ -175,28 +178,28 @@ function get-GCFast {
         $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    } ; 
+    } ;
     if( $LocalDCs){
-        $smsg = "`Discovered `$LocalDCs:`n$(($LocalDCs|out-string).trim())" ; 
-        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $smsg = "`Discovered `$LocalDCs:`n$(($LocalDCs|out-string).trim())" ;
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
     } elseif($Site -eq 'Spellbrook'){
         $smsg = "Get-ADDomainController -filter { (isglobalcatalog -eq `$true) -and (Site -eq $($Site)) -and (Domain -eq $($Domain)}"
-        $smsg += "`nFAILED to return DCs, and `$Site -eq Spellbrook:" 
-        $smsg += "`ndiverting to $($rgxSpbDCRgx) dcs in entire Domain:" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        $smsg += "`nFAILED to return DCs, and `$Site -eq Spellbrook:"
+        $smsg += "`ndiverting to $($rgxSpbDCRgx) dcs in entire Domain:" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         TRY{
-            $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Domain -eq $Domain) } -EA STOP | 
-                ?{$_.ComputerObjectDN -match $rgxSpbDCRgx } 
+            $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Domain -eq $Domain) } -EA STOP |
+                ?{$_.ComputerObjectDN -match $rgxSpbDCRgx }
         } CATCH {
             $ErrTrapd=$Error[0] ;
             $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        } ; 
-    } ; 
-  
+        } ;
+    } ;
+
     # any dc filter
     #$LocalDCs = Get-ADDomainController -filter {(Site -eq $Site)} ;
 
@@ -213,35 +216,37 @@ function get-GCFast {
             } # if-E
         } ;
         if($Exclude){
-            $smsg = "-Exclude specified:`n$((($exclude -join ',')|out-string).trim())" ; 
-            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            $smsg = "-Exclude specified:`n$((($exclude -join ',')|out-string).trim())" ;
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
             foreach($excl in $Exclude){
-                $PotentialDCs = $PotentialDCs |?{$_ -ne $excl} ; 
-            } ; 
-        } ; 
+                $PotentialDCs = $PotentialDCs |?{$_ -ne $excl} ;
+            } ;
+        } ;
         if($ServerPrefix){
-            $smsg = "-ServerPrefix specified: $($ServerPrefix)" ; 
-            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            $smsg = "-ServerPrefix specified: $($ServerPrefix)" ;
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-            $PotentialDCs = $PotentialDCs |?{$_ -match "^$($ServerPrefix)" } ; 
-            
+            $PotentialDCs = $PotentialDCs |?{$_ -match "^$($ServerPrefix)" } ;
+
         }
-        write-host -foregroundcolor yellow  
+        write-host -foregroundcolor yellow
         $smsg = "`$PotentialDCs: $PotentialDCs";
-        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
         $DC = $PotentialDCs | Get-Random ;
 
-        $smsg = "(returning random domaincontroller from result to pipeline:$($DC)" ; 
-        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $smsg = "(returning random domaincontroller from result to pipeline:$($DC)" ;
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
         $DC | write-output  ;
     } else {
-        write-host -foregroundcolor yellow  "NO DCS RETURNED BY GET-GCFAST()!";
+        $smsg = " NO DCS RETURNED BY GET-GCFAST()!";
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent }
+        else { write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         write-output $false ;
     } ;
-} 
-#*----------------^ END Function get-GCFast ^----------------
+}
+#endregion GET_GCFAST ; #*------^ END get-GCFast ^------
