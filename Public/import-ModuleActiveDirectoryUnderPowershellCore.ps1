@@ -189,7 +189,7 @@ function import-ModuleActiveDirectoryUnderPowershellCore {
 
     Remove-Item function:Measure-Object -ErrorAction SilentlyContinue
 
-    Remove-Item alias:Measure-Object -ErrorAction SilentlyContinue
+    Remove-Item -path alias:Measure-Object -ErrorAction SilentlyContinue
 
     ```
 
