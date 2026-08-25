@@ -5,21 +5,21 @@
   .SYNOPSIS
   verb-ADMS - ActiveDirectory PS Module-related generic functions
   .NOTES
-  Version     : 6.2.1.0
+  Version     : 7.0.0.0
   Author      : Todd Kadrie
   Website     :	https://www.toddomation.com
   Twitter     :	@tostka
-  CreatedDate : 12/26/2019
+  CreatedDate : 12/27.0.09
   FileName    : verb-ADMS.psm1
   License     : MIT
-  Copyright   : (c) 12/26/2019 Todd Kadrie
+  Copyright   : (c) 12/27.0.09 Todd Kadrie
   Github      : https://github.com/tostka
   AddedCredit : REFERENCE
   AddedWebsite:	REFERENCEURL
   AddedTwitter:	@HANDLE / http://twitter.com/HANDLE
   REVISIONS
-  * 12/26/2019 - 1.0.0.0
-  # 11:51 AM 5/6/2019 Sync-AD():moved from tsksid-incl-ServerApp.ps1
+  * 12/27.0.09 - 1.0.0.0
+  # 11:51 AM 5/7.0.09 Sync-AD():moved from tsksid-incl-ServerApp.ps1
   # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
   # 11:33 AM 11/1/2017 initial vers
   .DESCRIPTION
@@ -173,10 +173,10 @@ function find-SiteRoleOU {
     * 12:37 PM 12/2/2021 ren $SiteOUName to $SearchBase, flipped param to support the OU below with search should be run, in form of either the OU Name, or a full DN; added nesting support and a loop to try the search with and wo wildcard between SearchBase OU and the FindOU
     * 12:17 PM 11/23/2021 port over and expand get-SiteMbxOU to cover range of Email-related role OU's, via lookup, keyed from a starting point: Site root OU, or child domain root. 
     * 10:57 AM 4/3/2020 cleanup to modularize, added verbose sup, updated CBH
-    # 2:51 PM 3/6/2017 add -Resource param to steer to 'Email Resources'
+    # 2:51 PM 3/7.0.07 add -Resource param to steer to 'Email Resources'
     # 12:36 PM 2/27/2017 fixed to cover breaks frm AD reorg OU name changes, Generics are all now in a single OU per site
     # 11:56 AM 3/31/2016 port to find-SiteRoleOU; validated that latest round of updates are still functional; minor cleanup
-    * 11:31 AM 3/16/2016 debugged to function.
+    * 11:31 AM 3/17.0.06 debugged to function.
     * 1:34 PM 3/15/2016 adapted SecGrp OU lookup to MailContact OU
     * 11:05 AM 10/7/2015 initial vers
     .DESCRIPTION
@@ -525,7 +525,7 @@ function Get-AdminInitials {
     # 11:28 AM 3/31/2016 validated that latest round of updates are still functional
     vers: 2:35 PM 3/15/2016: fixed, was returning only the middle initial in ISE
     vers: 12:35 PM 12/18/2015: added a psv2 compat version
-    vers: 10:47 AM 10/6/2015 added pshelp
+    vers: 10:47 AM 10/7.0.05 added pshelp
     vers: 11:06 AM 8/12/2015 thrown together
     .DESCRIPTION
     Get-AdminInitials - simple function to retrieve the admin's initials from the current environment's UserName e-vari (uses ADMS to resolve samaccountname to name value from AD)
@@ -2336,6 +2336,7 @@ function get-GCFast {
     AddedWebsite: http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
     AddedTwitter: URL
     REVISIONS   :
+    * 8:08 AM 7/31/2026 updated region brackets
     * 2:53 PM 4/10/2026 add: -silent
     * 2:39 PM 1/23/2025 added -exclude (exclude array of dcs by name), -ServerPrefix (exclude on leading prefix of name) params, added expanded try/catch, swapped out w-h etc for wlt calls
     * 3:38 PM 3/7/2024 SPB Site:Spellbrook no longer has *any* GCs: coded in a workaround and discvoer domain-wide filtering for CN=EDC.* gcs (as spb servers use EDCMS8100 AS LOGONDC)
@@ -2369,12 +2370,12 @@ function get-GCFast {
     .EXAMPLE
     PS> get-gcfast -domain dom.for.domain.com
     Lookup a Global domain gc, default to Site lookup from local server's perspective
-    .EXAMPLE    
+    .EXAMPLE
     PS> if($domaincontroller = get-gcfast -Exclude ServerBad -Verbose){
     PS>     write-warning "Changing DomainControler: Waiting 20seconds, for RelSync..." ;
     PS>     start-sleep -Seconds 20 ;
-    PS> } ; 
-    Demo acquireing a new DC, excluding a caught bad DC, and waiting before moving on, to permit ADRerplication from prior dc to attempt to ensure full sync of changes. 
+    PS> } ;
+    Demo acquireing a new DC, excluding a caught bad DC, and waiting before moving on, to permit ADRerplication from prior dc to attempt to ensure full sync of changes.
     PS> get-gcfast -ServerPrefix ABC -verbose
     Demo use of -ServerPrefix to only return DCs with servernames that begin with the string 'ABC'
     .EXAMPLE
@@ -2388,21 +2389,21 @@ function get-GCFast {
     PS>         if ($_.Exception.Message -like "*ResourceUnavailable*") {
     PS>             $ErrorTrapped=$Error[0] ;
     PS>             $smsg = "Failed to exec cmd because: $($ErrorTrapped.Exception.Message )" ;
-    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-    PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+    PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
     PS>             # re-quire a new DC
-    PS>             $badDC = $domaincontroller ; 
-    PS>             $smsg = "PROBLEM CONTACTING $(domaincontroller)!:Resource unavailable: $($ErrorTrapped.Exception.Message)" ; 
-    PS>             $smsg += "get-GCFast() an alterate DC" ; 
-    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-    PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>             $badDC = $domaincontroller ;
+    PS>             $smsg = "PROBLEM CONTACTING $(domaincontroller)!:Resource unavailable: $($ErrorTrapped.Exception.Message)" ;
+    PS>             $smsg += "get-GCFast() an alterate DC" ;
+    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+    PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
     PS>             if($domaincontroller = get-gcfast -Exclude $$badDC -Verbose){
     PS>                 write-warning "Changing DomainController:($($badDC)->$($domaincontroller)):Waiting 20seconds, for ReplSync..." ;
     PS>                 start-sleep -Seconds 20 ;
-    PS>             } ;                             
+    PS>             } ;
     PS>         }else {
     PS>             throw $Error[0] ;
-    PS>         } ; 
+    PS>         } ;
     PS>     } CATCH {
     PS>         $ErrorTrapped=$Error[0] ;
     PS>         Start-Sleep -Seconds $RetrySleep ;
@@ -2419,7 +2420,7 @@ function get-GCFast {
     PS>         Continue ;
     PS>     }  ;
     PS> } Until ($Exit -eq $DoRetries) ;
-    Retry demo that includes aquisition of a new DC, excluding a caught bad DC, and waiting before moving on, to permit ADRerplication from prior dc to attempt to ensure full sync of changes. 
+    Retry demo that includes aquisition of a new DC, excluding a caught bad DC, and waiting before moving on, to permit ADRerplication from prior dc to attempt to ensure full sync of changes.
     .LINK
     https://github.com/tostka/verb-adms
     #>
@@ -2442,35 +2443,35 @@ function get-GCFast {
     $SpeedThreshold = 100 ;
     $rgxSpbDCRgx = 'CN=EDCMS'
     $ErrorActionPreference = 'SilentlyContinue' ; # Set so we don't see errors for the connectivity test
-    $env:ADPS_LoadDefaultDrive = 0 ; 
-    $sName = "ActiveDirectory"; 
+    $env:ADPS_LoadDefaultDrive = 0 ;
+    $sName = "ActiveDirectory";
     TRY{
         if ( -not(Get-Module | Where-Object { $_.Name -eq $sName }) ) {
-            $smsg = "Adding ActiveDirectory Module (`$script:ADPSS)" ; 
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-            $script:AdPSS = Import-Module $sName -PassThru -ea Stop ;
+            $smsg = "Adding ActiveDirectory Module (`$script:ADPSS)" ;
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            $script:AdPSS = Import-Module $sName -force -PassThru -ea Stop ;
         } ;
         if (-not $Domain) {
             $Domain = (get-addomain -ea Stop).DNSRoot ; # use local domain
             $smsg = "Defaulting domain: $Domain";
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
         }
     } CATCH {
         $ErrTrapd=$Error[0] ;
         $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    } ; 
-    
+    } ;
+
     # Get all the local domain controllers
     if ((-not $Site)) {
         # if no site, look the computer's Site Up in AD
         TRY{
             $Site = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
             $smsg = "Using local machine Site: $($Site)";
-            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
         } CATCH {
@@ -2478,7 +2479,7 @@ function get-GCFast {
             $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        } ; 
+        } ;
     } ;
 
     # gc filter
@@ -2492,28 +2493,28 @@ function get-GCFast {
         $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    } ; 
+    } ;
     if( $LocalDCs){
-        $smsg = "`Discovered `$LocalDCs:`n$(($LocalDCs|out-string).trim())" ; 
-        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $smsg = "`Discovered `$LocalDCs:`n$(($LocalDCs|out-string).trim())" ;
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
     } elseif($Site -eq 'Spellbrook'){
         $smsg = "Get-ADDomainController -filter { (isglobalcatalog -eq `$true) -and (Site -eq $($Site)) -and (Domain -eq $($Domain)}"
-        $smsg += "`nFAILED to return DCs, and `$Site -eq Spellbrook:" 
-        $smsg += "`ndiverting to $($rgxSpbDCRgx) dcs in entire Domain:" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        $smsg += "`nFAILED to return DCs, and `$Site -eq Spellbrook:"
+        $smsg += "`ndiverting to $($rgxSpbDCRgx) dcs in entire Domain:" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         TRY{
-            $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Domain -eq $Domain) } -EA STOP | 
-                ?{$_.ComputerObjectDN -match $rgxSpbDCRgx } 
+            $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Domain -eq $Domain) } -EA STOP |
+                ?{$_.ComputerObjectDN -match $rgxSpbDCRgx }
         } CATCH {
             $ErrTrapd=$Error[0] ;
             $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        } ; 
-    } ; 
-  
+        } ;
+    } ;
+
     # any dc filter
     #$LocalDCs = Get-ADDomainController -filter {(Site -eq $Site)} ;
 
@@ -2530,34 +2531,36 @@ function get-GCFast {
             } # if-E
         } ;
         if($Exclude){
-            $smsg = "-Exclude specified:`n$((($exclude -join ',')|out-string).trim())" ; 
-            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            $smsg = "-Exclude specified:`n$((($exclude -join ',')|out-string).trim())" ;
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
             foreach($excl in $Exclude){
-                $PotentialDCs = $PotentialDCs |?{$_ -ne $excl} ; 
-            } ; 
-        } ; 
+                $PotentialDCs = $PotentialDCs |?{$_ -ne $excl} ;
+            } ;
+        } ;
         if($ServerPrefix){
-            $smsg = "-ServerPrefix specified: $($ServerPrefix)" ; 
-            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            $smsg = "-ServerPrefix specified: $($ServerPrefix)" ;
+            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-            $PotentialDCs = $PotentialDCs |?{$_ -match "^$($ServerPrefix)" } ; 
-            
+            $PotentialDCs = $PotentialDCs |?{$_ -match "^$($ServerPrefix)" } ;
+
         }
-        write-host -foregroundcolor yellow  
+        write-host -foregroundcolor yellow
         $smsg = "`$PotentialDCs: $PotentialDCs";
-        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
         $DC = $PotentialDCs | Get-Random ;
 
-        $smsg = "(returning random domaincontroller from result to pipeline:$($DC)" ; 
-        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $smsg = "(returning random domaincontroller from result to pipeline:$($DC)" ;
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
         $DC | write-output  ;
     } else {
-        write-host -foregroundcolor yellow  "NO DCS RETURNED BY GET-GCFAST()!";
+        $smsg = " NO DCS RETURNED BY GET-GCFAST()!";
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent }
+        else { write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         write-output $false ;
     } ;
 }
@@ -3186,10 +3189,10 @@ function get-SiteMbxOU {
     * 6:05 PM 4/9/2026 complete-recoding to accomodate bananas non-standard/unmanaged Migrations OU Shared/Room-Eqiu & SecGrp OU names: Went through all Migrations OU roots and created missing OUs to suit
         added -modelDistinguishedName to even have a shot at resolving (short of running a canned list of SiteCodes, that will ahve to dyn accommodate mergers over time)
     * 10:57 AM 4/3/2020 cleanup to modularize, added verbose sup, updated CBH
-    # 2:51 PM 3/6/2017 add -Resource param to steer to 'Email Resources'
+    # 2:51 PM 3/7.0.07 add -Resource param to steer to 'Email Resources'
     # 12:36 PM 2/27/2017 fixed to cover breaks frm AD reorg OU name changes, Generics are all now in a single OU per site
     # 11:56 AM 3/31/2016 port to get-SiteMbxOU; validated that latest round of updates are still functional; minor cleanup
-    * 11:31 AM 3/16/2016 debugged to function.
+    * 11:31 AM 3/17.0.06 debugged to function.
     * 1:34 PM 3/15/2016 adapted SecGrp OU lookup to MailContact OU
     * 11:05 AM 10/7/2015 initial vers
     .DESCRIPTION
@@ -4137,7 +4140,7 @@ function import-ModuleActiveDirectoryUnderPowershellCore {
 
     Remove-Item function:Measure-Object -ErrorAction SilentlyContinue
 
-    Remove-Item alias:Measure-Object -ErrorAction SilentlyContinue
+    Remove-Item -path alias:Measure-Object -ErrorAction SilentlyContinue
 
     ```
 
@@ -4270,7 +4273,7 @@ function load-ADMS {
     * 12:57 PM 8/22/2023 test before calling Add-PSTitleBar (for PRY/dep-less support)
     * 9:18 AM 7/26/2021 added add-PSTitleBar ADMS tag, w verbose supp; moved connect-ad alias into function alias spec
     * 2:10 PM 6/9/2021 add verbose support 
-    * 9:57 AM 11/26/2019 added $Cmdlet param, and ADPS_LoadDefaultDrive suppression evari, to speed up or permit selective loads of targeted cmdlests, stipped down the 'load every module' code to just target the single mod
+    * 9:57 AM 11/27.0.09 added $Cmdlet param, and ADPS_LoadDefaultDrive suppression evari, to speed up or permit selective loads of targeted cmdlests, stipped down the 'load every module' code to just target the single mod
     # 1:23 PM 1/8/2019 load-ADMS:add an alias to put in verb-noun name match with other variants
     vers: 10:23 AM 4/15/2015 fmt doc cleanup
     vers: 10:43 AM 1/14/2015 fixed return & syntax expl to true/false
@@ -5282,7 +5285,7 @@ Function test-Password{
     REVISIONS
     * 10:20 AM 9/26/2023 ren & alias orig, for verb compliance: Validate-Password -> test-password
     * 2:02 PM 8/2/2023 w revised req's: reset minLen to 14; added param & test for testComplexity (defaults false)
-    * 11:43 AM 4/6/2016 hybrid of Shay Levy's 2008 post, and CommonDollars's 2013 code
+    * 11:43 AM 4/7.0.06 hybrid of Shay Levy's 2008 post, and CommonDollars's 2013 code
     .DESCRIPTION
     test-Password - Validate Password complexity, to Base AD Complexity standards
     Win2008's 2008's stnd: Passwords must contain characters from 3 of the following 4 cats:
@@ -5349,8 +5352,8 @@ Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU3LofG8iN5hAcactrC/2fc06S
-# FcOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU24MzJ1hQRDOLNQMoaZFWzD8n
+# uw2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5365,9 +5368,9 @@ Export-ModuleMember -Function Convert-ADSIDomainFqdnToNBName,find-SiteRoleOU,get
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSzqd2E
-# 4lfR7OYoDSASz7/HiYNH0DANBgkqhkiG9w0BAQEFAASBgFBGhUCC3CUliaKIA7jM
-# 7Ifw+g6pFE2/qqj/BobJ1Ge70+8xK9dYWWaj9Dyk0/Q9ti99iFEVQOwA3Mrx5b1W
-# 36wzxPrQLmx/KmiKK4d7htKad55U7MJz8N5HJny0Q+HdS8dDzg0wNRh3ypajaWaz
-# IiF6KERzvZStUz5F0WJVvJDZ
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRah6Dh
+# Slvm7cjD2L6EYy1MJZ5MbTANBgkqhkiG9w0BAQEFAASBgA6ZPldV23Kzcdtgg2Tz
+# nLXG4oJu5kozrH4J/frUlEfJNbunKahT4clHm7F2ji7jR/Addjl4QRGcP86ZBRy1
+# dqLi5qZ5JKRKZBEXK5gj21FFd5qAmrrerSlz6bueYKzFyC1DYSYV+wLM2Oh/ZJp0
+# 2Lf2I68/NfQZE8/c6IHVbDQN
 # SIG # End signature block
